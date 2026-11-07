@@ -186,7 +186,7 @@ internal static class Perf
         catch { return path; }
     }
 
-    private static string? ExePath(string cmd)
+    internal static string? ExePath(string cmd)
     {
         cmd = Environment.ExpandEnvironmentVariables(cmd.Trim());
         if (cmd.StartsWith('"')) { int e = cmd.IndexOf('"', 1); return e > 1 ? cmd[1..e] : null; }

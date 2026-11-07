@@ -59,6 +59,7 @@ internal static class Actions
     /// <summary>Does the default fix for a finding: close/kill the program, or neutralise the blocking window.</summary>
     public static string Execute(Finding f, Settings s, bool force = false)
     {
+        if (f.Category == Category.Respawn) return "refused: choose what to disable in the Keeps coming back window";
         if (f.Category == Category.Blocker)
         {
             if (f.Kind == BlockerKind.TransparentOverlay)

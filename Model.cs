@@ -1,6 +1,6 @@
 namespace Argus;
 
-internal enum Category { Analytics, Hung, Hog, Weird, Blocker }
+internal enum Category { Analytics, Hung, Hog, Weird, Blocker, Respawn }
 
 /// <summary>What to do when a category fires.</summary>
 internal enum Handling { Off, Ask, Auto }
@@ -22,6 +22,7 @@ internal sealed class Finding
     public IntPtr Hwnd;
     public BlockerKind Kind;
     public string WindowClass = "";
+    public List<PersistenceSource>? Sources;          // Respawn findings: what keeps restarting the program
     public DateTime First = DateTime.Now;
 
     public string CategoryLabel => Category switch
@@ -31,6 +32,7 @@ internal sealed class Finding
         Category.Hog => "Resource hog",
         Category.Weird => "Suspicious",
         Category.Blocker => "Invisible blocker",
+        Category.Respawn => "Keeps coming back",
         _ => Category.ToString(),
     };
 }

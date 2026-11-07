@@ -203,12 +203,17 @@ internal static class Updater
     // ---- can this copy replace itself? ------------------------------------------------------------------------------
 
     /// <summary>Only the portable single-file Argus.exe in a writable folder. Never a build made from source.</summary>
-    public static bool CanSelfUpdate(out string reason)
+    public static bool CanSelfUpdate(out string reason) =>
+        CanSelfUpdate(Environment.ProcessPath, !string.IsNullOrEmpty(typeof(Updater).Assembly.Location), out reason);
+
+    /// <summary>The testable core. <paramref name="builtFromSource"/> is true when the code is not running as a single-file exe.</summary>
+    internal static bool CanSelfUpdate(string? exe, bool builtFromSource, out string reason)
     {
-        string? exe = Environment.ProcessPath;
         if (string.IsNullOrEmpty(exe) || !Path.GetFileName(exe).Equals("Argus.exe", StringComparison.OrdinalIgnoreCase))
         { reason = "this is not the portable Argus.exe"; return false; }
-        if (!string.IsNullOrEmpty(typeof(Updater).Assembly.Location))
+        if (!builtFromSource && IsTemporaryLocation(exe))
+        { reason = "Argus is running from a temporary folder, probably straight out of the zip. Extract it to a folder you keep, such as C:\\Users\\you\\Apps\\Argus, and run it from there"; return false; }
+        if (builtFromSource)
         { reason = "this copy was built from source (update it with git pull and a rebuild)"; return false; }
         try
         {
@@ -221,6 +226,23 @@ internal static class Updater
     }
 
     // ---- download and verify -------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// True when the program is running from a temporary folder: %TEMP%, or Windows' own Temp. That is where Explorer puts it when
+    /// Argus.exe is double-clicked inside the zip window, and Windows cleans those folders up.
+    /// </summary>
+    public static bool IsTemporaryLocation(string? exePath)
+    {
+        if (string.IsNullOrEmpty(exePath)) return false;
+        try
+        {
+            string full = Path.GetFullPath(exePath);
+            string temp = Path.GetFullPath(Path.GetTempPath());
+            string winTemp = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp") + Path.DirectorySeparatorChar;
+            return full.StartsWith(temp, StringComparison.OrdinalIgnoreCase) || full.StartsWith(winTemp, StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
 
     /// <summary>The expected SHA-256 from a "hash  filename" checksum file.</summary>
     public static string ParseSha(string text, string zipName)
@@ -374,6 +396,10 @@ internal static class Updater
         string zip = await DownloadAsync(r, progress, ct);
         progress?.Report(new UpdateProgress("Checking the update", 0, 0));
         string staged = ExtractAndValidate(zip, r.Version, Path.Combine(UpdatesDir, r.Version, "files"));
+
+        // signature rule: a tampered or untrusted signature is always refused, and a signed copy only accepts the same publisher
+        var (signatureOk, signatureWhy) = SignaturePolicy.AllowUpdate(Authenticode.Check(currentExe), Authenticode.Check(staged));
+        if (!signatureOk) throw new UpdateException(signatureWhy);
 
         string next = Path.Combine(Path.GetDirectoryName(currentExe)!, "Argus.exe.new");
         try { File.Copy(staged, next, true); }

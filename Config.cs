@@ -34,6 +34,10 @@ internal sealed class Settings
     public bool UpdateCheck { get; set; }                            // look for a new release about once a day
     public DateTime? LastUpdateCheckUtc { get; set; }
     public string? SkippedVersion { get; set; }                      // "skip this version" in the update dialog
+    // First-run learning mode (see Learning.cs). Off for existing installs; a fresh install starts with it on.
+    public bool Learning { get; set; }
+    public DateTime? LearningStartedUtc { get; set; }
+    public int LearningDays { get; set; } = 3;
     public int TempAgeDays { get; set; } = 7;                        // temp files newer than this are never touched
 
     public Handling For(Category c) => c switch
@@ -43,6 +47,7 @@ internal sealed class Settings
         Category.Hog => Hog,
         Category.Weird => Weird,
         Category.Blocker => Blocker,
+        Category.Respawn => Handling.Ask,                 // changing services or tasks is never automatic
         _ => Handling.Off,
     };
 }
@@ -178,8 +183,7 @@ internal static class Config
         {
             if (File.Exists(SettingsPath))
                 Settings = JsonSerializer.Deserialize<Settings>(File.ReadAllText(SettingsPath), Json) ?? new Settings();
-            else
-                SaveSettings();
+            else { Settings = new Settings { Learning = true, LearningStartedUtc = DateTime.UtcNow }; SaveSettings(); }   // fresh install: learn first, act later
         }
         catch { Settings = new Settings(); }
     }

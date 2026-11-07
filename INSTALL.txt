@@ -1,0 +1,29 @@
+ARGUS - HOW TO RUN IT (there is no installer)
+=============================================
+
+Argus is a portable program. Nothing is installed and Windows is not changed.
+You run Argus.exe from the folder you extracted it to.
+
+1. Keep this folder somewhere safe that you can write to, for example
+       C:\Users\<you>\Apps\Argus
+   - Do NOT run Argus from inside the zip window (Windows runs it from a
+     temporary folder that gets cleaned up).
+   - Avoid Downloads and Temp (cleaned up) and Program Files (read-only, so
+     Argus cannot update itself there).
+
+2. Double-click Argus.exe.
+
+3. If Windows says "Windows protected your PC": click "More info", then
+   "Run anyway". Argus is not code-signed yet, so Windows does not know it.
+
+4. If it is still blocked: right-click Argus.exe -> Properties -> tick
+   "Unblock" -> OK. Or, in PowerShell:   Unblock-File .\Argus.exe
+
+Some antivirus tools are wary of any program that closes other programs. Argus
+is open source (see README.md); you can build it yourself.
+
+To remove Argus: turn off "Start Argus when I sign in" if you used it, quit
+Argus from the tray icon (right-click -> Exit), and delete this folder.
+Settings and the log are in %APPDATA%\Argus.
+
+More: README.md, SAFETY.md, CHANGELOG.md

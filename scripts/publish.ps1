@@ -27,7 +27,16 @@ dotnet publish Argus.csproj -c Release -r win-x64 --self-contained true `
     -p:DebugType=None -p:OutDir=obj/portable-build/ -o $dir   # OutDir keeps the normal bin\ folder free (a running Argus may be locking it)
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 
-foreach ($f in "README.md", "CHANGELOG.md", "SAFETY.md", "LICENSE") {
+# Optional code signing (see docs/SIGNING.md). With no certificate configured the build is simply unsigned.
+$exePath = Join-Path $dir "Argus.exe"
+if ($env:ARGUS_SIGN_PFX_BASE64 -and $env:ARGUS_SIGN_PASSWORD) {
+    $ts = if ($env:ARGUS_SIGN_TIMESTAMP) { $env:ARGUS_SIGN_TIMESTAMP } else { "http://timestamp.digicert.com" }
+    & (Join-Path $PSScriptRoot "sign-file.ps1") -Path $exePath -PfxBase64 $env:ARGUS_SIGN_PFX_BASE64 -Password $env:ARGUS_SIGN_PASSWORD -TimestampServer $ts
+} else {
+    Write-Host "Argus.exe is not signed (no signing certificate is configured)."
+}
+
+foreach ($f in "INSTALL.txt", "README.md", "CHANGELOG.md", "SAFETY.md", "LICENSE") {
     if (Test-Path (Join-Path $root $f)) { Copy-Item (Join-Path $root $f) -Destination $dir }
 }
 

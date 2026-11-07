@@ -32,7 +32,7 @@ internal sealed partial class MainForm : Form
 
     public MainForm(bool startHidden, int initialTab = 0)
     {
-        Text = "Argus " + AppInfo.Version;
+        Text = "Argus " + AppInfo.Version + (Elevation.IsElevated ? " (administrator)" : "");
         ClientSize = new Size(1260, 800);
         MinimumSize = new Size(1060, 700);
         StartPosition = FormStartPosition.CenterScreen;
@@ -69,6 +69,7 @@ internal sealed partial class MainForm : Form
         Log.Write($"Argus {AppInfo.Version} started ({Config.Block.Count} blocklist, {Config.Excl.Count} exclusions).");
         LoadLogTail();
         InitUpdates();
+        InitLearning();
         _watcher.Start();
     }
 
@@ -153,7 +154,7 @@ internal sealed partial class MainForm : Form
         _btnScan.Click += (_, _) => _watcher.ScanNow();
         _btnPick.Click += (_, _) => StartPick();
         _tt.SetToolTip(_btnPick, "Ctrl+Alt+K");
-        _header.Controls.AddRange(new Control[] { _title, _subtitle, _pill, _btnScan, _btnPick, _btnUpdate });
+        _header.Controls.AddRange(new Control[] { _title, _subtitle, _pill, _btnScan, _btnPick, _btnUpdate, _btnLearning });
         _header.Resize += (_, _) => LayoutHeader();
 
         _host.Dock = DockStyle.Fill; _host.BackColor = Theme.Bg;
@@ -168,8 +169,10 @@ internal sealed partial class MainForm : Form
         _btnPick.Location = new Point(right - _btnPick.Width, top);
         _btnScan.Location = new Point(_btnPick.Left - 10 - _btnScan.Width, top);
         _pill.Location = new Point(_btnScan.Left - 14 - _pill.Width, top + 2);
-        _btnUpdate.Location = new Point(_pill.Left - 12 - _btnUpdate.Width, top);
-        int limit = (_btnUpdate.Visible ? _btnUpdate.Left : _pill.Left) - 16;
+        int edge = _pill.Left - 12;
+        if (_btnLearning.Visible) { _btnLearning.Location = new Point(edge - _btnLearning.Width, top); edge = _btnLearning.Left - 10; }
+        _btnUpdate.Location = new Point(edge - _btnUpdate.Width, top);
+        int limit = (_btnUpdate.Visible ? _btnUpdate.Left : (_btnLearning.Visible ? _btnLearning.Left : _pill.Left)) - 16;
         _title.Width = Math.Max(120, Math.Min(520, limit - _title.Left));
         _subtitle.Width = Math.Max(120, Math.Min(580, limit - _subtitle.Left));
     }
@@ -244,6 +247,7 @@ internal sealed partial class MainForm : Form
         {
             ShowMain();
             if (_trayWantsUpdate) { _trayWantsUpdate = false; ShowUpdateDialog(); }
+            else if (_trayWantsLearning) { _trayWantsLearning = false; ShowLearningDialog(); }
         };
     }
 
@@ -262,7 +266,7 @@ internal sealed partial class MainForm : Form
 
     private void Notify(Finding f)
     {
-        _trayWantsUpdate = false;                       // this notice is about a finding, not an update
+        _trayWantsUpdate = false; _trayWantsLearning = false;   // this notice is about a finding, not an update or learning
         string text = $"{f.ProcName}: {f.Reason}";
         _tray.ShowBalloonTip(6000, $"Argus - {f.CategoryLabel}", text.Length > 220 ? text[..220] + "..." : text, ToolTipIcon.Warning);
     }
@@ -283,7 +287,7 @@ internal sealed partial class MainForm : Form
         bool paused = Config.Settings.Paused;
         if (paused) _pill.Set("Paused", Theme.Warn);
         else if (_waiting > 0) _pill.Set($"{_waiting} need a decision", Theme.Bad);
-        else _pill.Set($"Watching  -  every {Config.Settings.ScanIntervalSec}s", Theme.Good);
+        else _pill.Set($"Watching  -  every {Config.Settings.ScanIntervalSec}s" + (Elevation.IsElevated ? "  -  Administrator" : ""), Theme.Good);
 
         _navPause.Glyph = paused ? "" : ""; _navPause.Invalidate();
         _tt.SetToolTip(_navPause, paused ? "Resume monitoring" : "Pause monitoring");
@@ -291,6 +295,7 @@ internal sealed partial class MainForm : Form
         _miPause.Text = paused ? "Resume monitoring" : "Pause monitoring";
         _tray.Text = paused ? "Argus (paused)" : (_waiting > 0 ? $"Argus - {_waiting} waiting" : "Argus");
         LayoutHeader();
+        UpdateLearningUi();
         RefreshHero();
     }
 

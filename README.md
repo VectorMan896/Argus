@@ -8,7 +8,34 @@ Argus is a small Windows tray app that keeps an eye on your PC. It closes analyt
 programs and background resource hogs, neutralises invisible windows that swallow your clicks, and helps older PCs run
 better. It has exclusion lists, and a "click a window to close it" tool.
 
-**Version:** 0.4.0 (early; see [CHANGELOG.md](CHANGELOG.md)). **Platform:** Windows 10/11, x64. **Network:** none, unless you turn on update checks (then only GitHub).
+**Version:** 0.5.0 (early; see [CHANGELOG.md](CHANGELOG.md)). **Platform:** Windows 10/11, x64. **Network:** none, unless you turn on update checks (then only GitHub).
+
+## Get Argus (there is no installer)
+
+Argus is a **portable program**. Nothing is installed and Windows is not changed: you download a zip, extract it to a folder, and run `Argus.exe`.
+
+1. **Download** `Argus-<version>-win-x64.zip` from the [latest release](https://github.com/VectorMan896/Argus/releases/latest) (under *Assets*). Windows 10 or 11, 64-bit.
+2. **Unblock the zip before you extract it.** Right-click the zip, choose **Properties**, tick **Unblock** at the bottom, click **OK**.
+   Windows marks everything downloaded from the internet, and that mark is what makes it block Argus. If there is no *Unblock* box, the zip is not
+   marked and you can skip this.
+3. **Extract it to a safe folder that you keep and can write to**, for example `C:\Users\<you>\Apps\Argus`.
+   - Do not run Argus from inside the zip window. Windows then runs it from a temporary folder that gets cleaned up (Argus warns you if that happens).
+   - Avoid *Downloads* and *Temp* (they get cleaned up) and *Program Files* (read-only, so Argus cannot update itself there).
+4. **Run `Argus.exe`.** If Windows says **"Windows protected your PC"**, click **More info**, then **Run anyway**. Releases are only signed
+   when the maintainer has a code-signing certificate (see [docs/SIGNING.md](docs/SIGNING.md)); an unsigned copy is not recognised by Windows.
+   *Properties > Digital Signatures* on `Argus.exe`, or `Argus.exe --signature Argus.exe`, shows whether yours is signed and by whom.
+
+**If it is still blocked:** right-click `Argus.exe`, **Properties**, **Unblock**, **OK**, or run `Unblock-File .\Argus.exe` in PowerShell.
+Some antivirus tools are wary of any program that closes other programs. Argus is open source, so you can read it or
+[build it yourself](#build-and-run).
+
+**Check the download was not changed:** `Get-FileHash .\Argus-<version>-win-x64.zip -Algorithm SHA256` must match the `.sha256` file next to it.
+
+**Updating:** if you turn on update checks, Argus updates itself in that same folder. The update is downloaded by Argus, not by your browser, so it does
+not carry the internet mark and Windows does not block it again.
+
+**Removing it:** turn off *Start Argus when I sign in* if you used it, quit Argus from its tray icon (right-click, Exit), and delete the folder.
+Settings and the log are in `%APPDATA%\Argus`; delete that too to remove every trace.
 
 ## What it does
 
@@ -17,10 +44,34 @@ better. It has exclusion lists, and a "click a window to close it" tool.
 | Analytics / telemetry | programs matching `blocklist.txt` (e.g. `*telemetry*`, `CompatTelRunner`) | close automatically |
 | Not responding | a window that has not responded for 20 s | ask you |
 | Background resource hogs | no visible window and busy CPU/memory for 60 s | slow it down (lower priority + efficiency mode), never close |
-| Suspicious programs | disguised system names, temp-folder programs, random names, no publisher | ask you |
+| Suspicious programs | disguised system names, temp-folder programs, random names, no publisher. A valid digital signature clears a program; a broken one raises the alarm | ask you |
 | Invisible blockers | fully transparent windows or stuck popup windows that catch clicks | make click-through / hide |
+| Keeps coming back | an analytics program that Argus has closed 3 times in 10 minutes and that a service, scheduled task or startup entry restarts | ask you (never automatic) |
 
-Each category can be set to **Off**, **Ask** or **Auto** on the Rules page.
+Each category can be set to **Off**, **Ask** or **Auto** on the Rules page (the last one is always Ask).
+
+### First days: learning mode
+A fresh install starts in **learning mode** for 3 days. Argus watches and writes down what it **would** have done with your rules, but it closes,
+slows down and changes nothing. The **Learning** button in the header opens that list (program, what it would have done, how often, when). When it
+looks right, press **Start acting on my rules**; or keep learning, or adjust the rules first. Anything set to *Ask* is never held back: it still shows
+on the Needs a decision page. Upgrading from an older version does not turn learning mode on; you can switch it on or off under *Rules > Options*.
+
+### Programs that keep coming back
+Some analytics programs are restarted by a Windows service, a scheduled task or a startup entry, so closing them again and again does nothing.
+After the third close in ten minutes Argus looks for what restarts the program and lists it on the Needs a decision page. **Close / fix selected**
+opens a window with each starter ticked; **Switch off ticked** then:
+
+- sets a service to *Disabled*, switches a scheduled task off, or un-ticks a startup entry (the same switch Task Manager uses);
+- deletes nothing, and writes down how each one was, so **Rules > Disabled by Argus > Show list** can put it back exactly as it was;
+- never offers core Windows programs, and never does it automatically: changing a service is always your decision.
+
+Services and system tasks need administrator rights. Without them Argus changes nothing and says so (see below).
+`Argus.exe --starters FILE` prints what starts a program without changing anything.
+
+### Administrator mode, on request
+Argus runs as an ordinary user. *Rules > Options > Administrator mode > Restart as administrator* restarts it through Windows' own approval prompt
+(UAC) so it can manage protected services. Nothing is bypassed and no safety rule is relaxed: core Windows programs and Argus itself are refused
+with or without administrator rights. Close the elevated copy and start Argus normally to go back.
 
 ### The window
 A slim icon sidebar (white circle = current page) and rounded dark cards:
@@ -30,7 +81,7 @@ A slim icon sidebar (white circle = current page) and rounded dark cards:
 | Overview | status, counters since Argus started, live CPU and GPU graphs, memory dial, system meters, latest activity |
 | Needs a decision | everything Argus flagged but did not handle on its own, with Close / Kill / Never touch / Details |
 | Performance | tips from your real numbers, startup programs, free up memory, old temp files |
-| Rules | Off / Ask / Auto per category, thresholds, options, updates |
+| Rules | Off / Ask / Auto per category, thresholds, options (administrator mode, learning mode, what Argus disabled), updates |
 | Lists | the blocklist and the exclusions, editable |
 | Activity | everything Argus did, and why (also on the Overview as a short peek with a button) |
 
@@ -77,6 +128,8 @@ Argus.exe --stack X Y                                  # windows that would rece
 Argus.exe --pick                                       # click-to-close tool without the main window
 Argus.exe --perf                                       # read-only performance overview
 Argus.exe --usage [--sample N]                         # print CPU and GPU load once a second
+Argus.exe --signature FILE                             # is this file digitally signed, and by whom (read-only)
+Argus.exe --starters FILE                              # what service / task / startup entry starts this program (read-only)
 Argus.exe --update [--yes] [--no-restart]              # look for a newer release; --yes installs it (portable exe only)
 Argus.exe --hidden                                     # start in the tray
 Argus.exe --tab N                                      # open a page: 0 Overview ... 5 Activity
@@ -96,7 +149,8 @@ three choices: *Update and restart*, *Skip this version*, *Later*. Nothing is do
 3. your current version is kept as `Argus.exe.old`; the new one is swapped in and started;
 4. after ten healthy seconds (or a clean exit) the old version is deleted. If the new one fails to start twice, Argus goes back to the old one by itself.
 
-Only the portable `Argus.exe` in a writable folder updates itself. A copy built from source never overwrites itself: update that one with
+If your copy is signed, an update must be validly signed by the same publisher, or it is refused; a tampered signature is always refused
+(see [docs/SIGNING.md](docs/SIGNING.md)). Only the portable `Argus.exe` in a writable folder updates itself. A copy built from source never overwrites itself: update that one with
 `git pull` and a rebuild. See [SECURITY.md](SECURITY.md) for what the checksum does and does not protect against.
 
 ## Portable build and tests
@@ -109,7 +163,7 @@ powershell -ExecutionPolicy Bypass -File scripts/publish.ps1
 This writes `dist/Argus-<version>-win-x64.zip` and its `.sha256` checksum. The first publish downloads the .NET runtime packs from NuGet.
 The first launch of the portable exe is a few seconds slower because it unpacks its native files to `%TEMP%`.
 
-Run the automated tests (125 so far; they only use throwaway programs, folders and registry entries):
+Run the automated tests (202 so far; they only use throwaway programs, folders and registry entries):
 
 ```bash
 dotnet test tests/Argus.Tests/Argus.Tests.csproj

@@ -15,6 +15,7 @@ internal sealed partial class MainForm
     /// <summary>Starts the update timers. Nothing here touches the network unless the user turned update checks on.</summary>
     private void InitUpdates()
     {
+        WarnIfRunningFromTemporaryFolder();
         _btnUpdate.BackColor = Theme.Bg;
         _btnUpdate.Click += (_, _) => ShowUpdateDialog();
 
@@ -29,6 +30,18 @@ internal sealed partial class MainForm
             _confirmTimer.Tick += (_, _) => { _confirmTimer.Stop(); UpdateRecovery.Confirm(); };
             _confirmTimer.Start();
         }
+    }
+
+    /// <summary>Double-clicking Argus.exe inside the zip window runs it from a temporary folder that Windows cleans up later.</summary>
+    private void WarnIfRunningFromTemporaryFolder()
+    {
+        if (!Updater.IsTemporaryLocation(Environment.ProcessPath)) return;
+        const string msg = "Argus is running from a temporary folder, probably straight out of the zip. Extract the zip to a folder you keep, " +
+                           "for example C:\\Users\\you\\Apps\\Argus, and run it from there. Your settings are kept either way.";
+        Log.Write(msg);
+        var t = new System.Windows.Forms.Timer { Interval = 4000 };
+        t.Tick += (_, _) => { t.Stop(); t.Dispose(); _tray.ShowBalloonTip(15000, "Argus is running from a temporary folder", msg, ToolTipIcon.Warning); };
+        t.Start();
     }
 
     private RowCard BuildUpdatesCard()

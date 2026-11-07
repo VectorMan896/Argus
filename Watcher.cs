@@ -14,10 +14,16 @@ internal sealed class Watcher : IDisposable
     private DateTime _lastTrim = DateTime.MinValue;
     private readonly Dictionary<string, List<DateTime>> _kills = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> _respawnWarned = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Finding> _respawn = new(StringComparer.OrdinalIgnoreCase);     // "keeps coming back" findings waiting for the user
+    private readonly HashSet<string> _respawnDismissed = new(StringComparer.OrdinalIgnoreCase);    // all three guarded by lock (_respawn)
+    private readonly HashSet<string> _respawnNotified = new(StringComparer.OrdinalIgnoreCase);
 
     public event Action<IReadOnlyList<Finding>>? Updated;
     public event Action<Finding>? NeedsAttention;
     public IReadOnlyList<Finding> Current { get; private set; } = Array.Empty<Finding>();
+
+    /// <summary>True while a scan is running (tests wait for this to clear before moving on).</summary>
+    internal bool IsBusy => Volatile.Read(ref _busy) == 1;
 
     public void Start() => _timer = new System.Threading.Timer(_ => Tick(), null, 1500, Timeout.Infinite);
 
@@ -54,6 +60,10 @@ internal sealed class Watcher : IDisposable
 
             switch (s.For(f.Category))
             {
+                case Handling.Auto when s.Learning:
+                    Learning.Record(f, s);              // first-run learning mode: write down what would have happened, do nothing
+                    break;
+
                 case Handling.Auto when !_gaveUp.Contains(f.Key):
                     string result = Actions.Execute(f, s);
                     Log.Write($"[{f.CategoryLabel}] {f.ProcName} (pid {f.Pid}): {f.Reason} -> {result}");
@@ -62,7 +72,7 @@ internal sealed class Watcher : IDisposable
                     if (ok)
                     {
                         Stats.Record(f, result);
-                        if (f.Category == Category.Analytics) NoteKill(f.ProcName);
+                        if (f.Category == Category.Analytics) NoteKill(f.ProcName, f.Path);
                         if (f.Category == Category.Hog) _acted.Add(f.Key);
                         continue;
                     }
@@ -85,6 +95,8 @@ internal sealed class Watcher : IDisposable
         _acted.RemoveWhere(k => !keys.Contains(k));
 
         AutoTrim();
+        lock (_respawn)
+            foreach (var r in _respawn.Values.OrderBy(r => r.First)) { pending.Add(r); if (_respawnNotified.Add(r.Key)) NeedsAttention?.Invoke(r); }
         Current = pending;
         Updated?.Invoke(pending);
     }
@@ -101,7 +113,7 @@ internal sealed class Watcher : IDisposable
         Log.Write($"[Memory] only {Perf.AvailablePercent(before):0}% of RAM was free: asked Windows to page out {n} idle background programs (nothing closed).");
     }
 
-    private void NoteKill(string name)
+    internal void NoteKill(string name, string? path = null)
     {
         var now = DateTime.UtcNow;
         if (!_kills.TryGetValue(name, out var list)) _kills[name] = list = new List<DateTime>();
@@ -112,7 +124,36 @@ internal sealed class Watcher : IDisposable
             _respawnWarned[name] = now;
             Log.Write($"NOTE: {name} has been closed {list.Count} times in 10 minutes - something keeps restarting it " +
                       "(a service or scheduled task). Disabling that service/task is a cleaner fix than closing it each time.");
+            RaiseRespawn(name, path, list.Count);
         }
+    }
+
+    /// <summary>Looks for what keeps restarting the program. If something is found it is offered to the user; nothing is changed here.</summary>
+    private void RaiseRespawn(string name, string? path, int times)
+    {
+        lock (_respawn) if (_respawnDismissed.Contains(name)) return;
+        List<PersistenceSource> sources;
+        try { sources = Persistence.Find(path); }
+        catch (Exception ex) { Log.Write("could not look for what restarts " + name + ": " + ex.Message); return; }
+        if (sources.Count == 0) return;
+        var f = new Finding
+        {
+            Key = "respawn:" + name, Category = Category.Respawn, ProcName = name, Path = path, Sources = sources,
+            Reason = $"Closed {times} times in 10 minutes. Restarted by: " + string.Join("; ", sources.Select(s => $"{s.KindLabel} \"{s.Display}\"")),
+        };
+        lock (_respawn) _respawn[name] = f;
+    }
+
+    /// <summary>The user dealt with it (disabled the starters, or said to leave it): stop listing it.</summary>
+    public void ResolveRespawn(Finding f, bool dontAskAgain)
+    {
+        lock (_respawn)
+        {
+            _respawn.Remove(f.ProcName);
+            _respawnNotified.Remove(f.Key);
+            if (dontAskAgain) _respawnDismissed.Add(f.ProcName);
+        }
+        ScanNow();
     }
 
     /// <summary>Run one finding's fix on a worker thread (user clicked a button).</summary>

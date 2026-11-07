@@ -20,15 +20,27 @@ public sealed class ProcessTests : IDisposable
         return l;
     }
 
+    /// <summary>Scans until the program shows up as a finding (it may take a moment to be visible), for at most about 5 seconds.</summary>
+    private static Finding? ScanUntil(Detector det, int pid)
+    {
+        for (int i = 0; i < 20; i++)
+        {
+            var hit = det.Scan().SingleOrDefault(f => f.Pid == pid);
+            if (hit != null) return hit;
+            Thread.Sleep(250);
+        }
+        return null;
+    }
+
     [Fact]
     public void A_program_on_the_blocklist_is_flagged_as_analytics()
     {
-        var p = Fake.Start(_dir.Path, "argus_fake_telemetry_probe.exe");
+        var p = Fake.Start(_dir.Path, "argus_block_probe.exe");
         try
         {
-            var det = new Detector(new Settings(), List("block.txt", "argus_fake_telemetry_probe"), List("excl.txt", "# none"));
+            var det = new Detector(new Settings(), List("block.txt", "argus_block_probe"), List("excl.txt", "# none"));
 
-            var hit = det.Scan().SingleOrDefault(f => f.Pid == p.Id);
+            var hit = ScanUntil(det, p.Id);
 
             Assert.NotNull(hit);
             Assert.Equal(Category.Analytics, hit!.Category);
@@ -39,10 +51,10 @@ public sealed class ProcessTests : IDisposable
     [Fact]
     public void An_excluded_program_is_never_flagged()
     {
-        var p = Fake.Start(_dir.Path, "argus_fake_telemetry_probe.exe");
+        var p = Fake.Start(_dir.Path, "argus_block_probe.exe");
         try
         {
-            var det = new Detector(new Settings(), List("block.txt", "argus_fake_telemetry_probe"), List("excl.txt", "argus_fake_telemetry_probe"));
+            var det = new Detector(new Settings(), List("block.txt", "argus_block_probe"), List("excl.txt", "argus_block_probe"));
 
             Assert.DoesNotContain(det.Scan(), f => f.Pid == p.Id);
         }
@@ -57,7 +69,7 @@ public sealed class ProcessTests : IDisposable
         {
             var det = new Detector(new Settings(), List("block.txt", "# none"), List("excl.txt", "# none"));
 
-            var hit = det.Scan().SingleOrDefault(f => f.Pid == p.Id);
+            var hit = ScanUntil(det, p.Id);
 
             Assert.NotNull(hit);
             Assert.Equal(Category.Weird, hit!.Category);

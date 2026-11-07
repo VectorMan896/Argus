@@ -14,6 +14,7 @@ internal sealed class CliOptions
     public double? HogCpu;
     public int? TrimPid, TempDays, ThrottlePid;
     public bool TrimAll, TempClean, StartupOn, Usage, UpdateYes, NoRestart;
+    public string? SignatureFile, StartersFile;
     public int? UpdatedFrom;
     public string? StartupName, TempDir;
 }
@@ -44,10 +45,12 @@ internal static class Cli
                 case "--version": o.Mode = CliMode.Version; break;
                 case "--perf": o.Mode = CliMode.Perf; break;
                 case "--usage": o.Mode = CliMode.Perf; o.Usage = true; break;
+                case "--signature": o.Mode = CliMode.Perf; o.SignatureFile = Next(); break;
+                case "--starters": o.Mode = CliMode.Perf; o.StartersFile = Next(); break;
                 case "--update": case "--check-update": o.Mode = CliMode.Update; break;
                 case "--yes": o.UpdateYes = true; break;
                 case "--no-restart": o.NoRestart = true; break;
-                case "--updated-from": if (int.TryParse(Next(), out int uf)) o.UpdatedFrom = uf; break;
+                case "--updated-from": case "--handover": if (int.TryParse(Next(), out int uf)) o.UpdatedFrom = uf; break;
                 case "--trim": o.Mode = CliMode.Perf; o.TrimAll = true; break;
                 case "--throttle-pid": o.Mode = CliMode.Perf; if (int.TryParse(Next(), out int thp)) o.ThrottlePid = thp; break;
                 case "--trim-pid": o.Mode = CliMode.Perf; if (int.TryParse(Next(), out int tp)) o.TrimPid = tp; break;

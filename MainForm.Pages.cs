@@ -138,11 +138,14 @@ internal sealed partial class MainForm
         var s = Config.Settings;
         _stWaiting.Set(_waiting.ToString(), _waiting > 0 ? Theme.Bad : Theme.Good);
         _stClosed.Set(Stats.Closed.ToString()); _stSlowed.Set(Stats.Slowed.ToString()); _stFixed.Set(Stats.Fixed.ToString());
-        _heroTitle.Text = s.Paused ? "Argus is paused" : (_waiting > 0 ? "Something needs you" : "Argus is watching");
+        _heroTitle.Text = s.Paused ? "Argus is paused" : (s.Learning ? "Argus is learning" : (_waiting > 0 ? "Something needs you" : "Argus is watching"));
         _heroSub.Text = s.Paused
             ? "Monitoring is paused. Nothing will be closed or changed until you resume."
             : $"Scanning every {s.ScanIntervalSec} s.  Analytics: {HandlingText(s.Analytics)}.  Hogs: {HandlingText(s.Hog)} ({(s.HogAction == HogAction.Throttle ? "slow down" : "close")}).  " +
               $"Blockers: {HandlingText(s.Blocker)}.  Counters since {Stats.Since:HH:mm}.";
+        if (s.Learning && !s.Paused)
+            _heroSub.Text = "Learning mode: Argus is watching and writing down what it would do, but it is not closing or changing anything yet. " +
+                            "Press the Learning button at the top to see the list.";
         _btnHeroPause.Text = s.Paused ? "Resume" : "Pause";
         _btnHeroPause.Glyph = s.Paused ? "\uE768" : "\uE769";
         _btnHeroPause.Invalidate();
@@ -215,10 +218,17 @@ internal sealed partial class MainForm
         var kill = new PillButton("Kill now", "\uE711", PillStyle.Danger) { Margin = new Padding(0, 0, 10, 0) };
         var excl = new PillButton("Never touch this again", "", PillStyle.Secondary) { Margin = new Padding(0, 0, 10, 0) };
         var det = new PillButton("Details", "", PillStyle.Ghost);
-        fix.Click += (_, _) => { foreach (var f in Selected()) _watcher.Apply(f); };
+        fix.Click += (_, _) =>
+        {
+            foreach (var f in Selected())
+            {
+                if (f.Category == Category.Respawn) { ShowPersistenceDialog(f); break; }       // one dialog at a time
+                _watcher.Apply(f);
+            }
+        };
         kill.Click += (_, _) =>
         {
-            var sel = Selected().Where(f => f.Category != Category.Blocker).ToList();
+            var sel = Selected().Where(f => f.Category != Category.Blocker && f.Category != Category.Respawn).ToList();
             if (sel.Count == 0) return;
             if (MessageBox.Show(this, $"Force-close {sel.Count} program(s) immediately? Unsaved work will be lost.", "Argus",
                     MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
@@ -227,7 +237,10 @@ internal sealed partial class MainForm
         excl.Click += (_, _) =>
         {
             foreach (var f in Selected())
+            {
+                if (f.Category == Category.Respawn) { _watcher.ResolveRespawn(f, dontAskAgain: true); continue; }      // just stop suggesting
                 Config.Excl.Add(f.Category == Category.Blocker && f.WindowClass.Length > 0 ? "class:" + f.WindowClass : f.ProcName);
+            }
             LoadLists();
             _watcher.ScanNow();
         };
@@ -330,6 +343,18 @@ internal sealed partial class MainForm
         opts.AddRow("Also close child processes", "When Argus closes a program", Tog(s.KillTree, v => s.KillTree = v));
         opts.AddRow("Skip Windows' own programs", "For the hog and suspicious checks", Tog(s.SkipWindowsDir, v => s.SkipWindowsDir = v));
         opts.AddRow("Start Argus when I sign in", "It runs quietly in the tray", Tog(IsStartupEnabled(), SetStartup));
+        var admin = new PillButton(Elevation.IsElevated ? "Running as administrator" : "Restart as administrator", "", PillStyle.Secondary, 230) { Enabled = !Elevation.IsElevated };
+        admin.Click += (_, _) => RestartAsAdministrator();
+        opts.AddRow("Administrator mode", Elevation.IsElevated ? "Argus can manage protected services. Safety rules still apply." : "Lets Argus manage protected services. All safety rules stay on.", admin);
+        var disabledList = new PillButton("Show list", "", PillStyle.Secondary, 130);
+        disabledList.Click += (_, _) => ShowDisabledByArgus();
+        opts.AddRow("Disabled by Argus", "Services, tasks and startup entries it switched off; restore them here", disabledList);
+        opts.AddRow("Learning mode", "Auto categories only record what they would do", Tog(s.Learning, v =>
+        {
+            if (v) Learning.Start(s); else Learning.Finish(s);
+            Log.Write(v ? "Learning mode turned on." : "Learning mode turned off.");
+            UpdateStatus();
+        }));
         left.Controls.Add(opts);
 
         var timing = new RowCard { Title = "Timing" };

@@ -7,6 +7,39 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-07
+
+### Added
+- **First days: learning mode.** A fresh install starts in learning mode for three days: Argus watches and writes down what it **would** have done with your
+  rules, and closes, slows down and changes nothing. A **Learning** button in the header ("Learning: day 2 of 3", then "Learning done: review") opens the
+  list, and a tray notice tells you when the period is over. From there you can start acting on your rules, keep learning, or open the rules first. Things
+  set to *Ask* are never held back. Upgrading from an older version does not turn it on; *Rules > Options > Learning mode* switches it on or off.
+- **Programs that keep coming back.** When an analytics program has been closed three times in ten minutes, Argus looks for the service, scheduled task or
+  startup entry that restarts it and lists it on *Needs a decision* as "Keeps coming back". **Close / fix selected** opens a window with each starter ticked;
+  *Switch off ticked* sets a service to Disabled, switches a task off or un-ticks a startup entry. Nothing is deleted, it is never automatic, core Windows
+  programs are never offered, and *Rules > Options > Disabled by Argus > Show list* restores each one exactly as it was.
+- **Administrator mode, on request.** *Rules > Options > Administrator mode > Restart as administrator* restarts Argus through Windows' own approval prompt so it
+  can change protected services. Every safety rule stays in force with or without it, and the title and status pill say when it is on. Switching off a
+  service or system task without it is refused with a clear message instead of failing quietly.
+- **Digital signatures.** Argus reads a program's signature (without using the network). A valid signature now clears a "Suspicious" finding and says who signed it;
+  a damaged signature raises it. `Argus.exe --signature FILE` shows a file's signature, `Argus.exe --starters FILE` shows what starts a program (read-only).
+- **Signed updates.** The updater now refuses an update whose signature is damaged or untrusted, and, if your copy is signed, one that is not signed by the same
+  publisher. Releases are signed in CI when a code-signing certificate is added (`scripts/sign-file.ps1`, [docs/SIGNING.md](docs/SIGNING.md)); until then they stay unsigned.
+- **Clear install instructions.** Argus is a portable, no-install program, and the docs now say so up front: a "Get Argus (there is no installer)" section
+  in the README, `INSTALL.txt` inside the zip, and an install block on every GitHub release page. They cover unblocking the zip before extracting it,
+  extracting to a safe folder you keep and can write to, what to do about "Windows protected your PC", checking the checksum, and removing Argus.
+- Release pages are now filled in automatically: pushing a version tag writes the release notes from that version's `CHANGELOG.md` section followed by the
+  install block (`scripts/release-notes.ps1`). Argus's update window shows the same text.
+- Argus warns (activity log and a tray notice) when it is running from a temporary folder, which is what happens when `Argus.exe` is double-clicked
+  inside the zip window.
+- 77 more tests (202 in total): signature classification and the update policy, learning mode (including the real watcher leaving a program running while it
+  learns and closing it afterwards), the administrator restart command and the refusals that do not loosen with it, and "keeps coming back" end to end:
+  services only ever through a fake, startup entries and scheduled tasks as uniquely named throwaway entries that are removed again, undo records, and
+  the watcher raising it on the third close and not the second. Each new rule was checked to fail when deliberately broken.
+
+### Changed
+- The updater refuses to replace Argus when it is running from a temporary folder, and says to extract it to a folder you keep.
+- The README, SAFETY and SECURITY pages describe administrator mode, learning mode, signatures and what Argus can switch off.
 ## [0.4.0] - 2026-11-07
 
 ### Added
@@ -95,7 +128,8 @@ First version.
 - Command line: `--version`, `--scan`, `--apply`, `--stack`, `--pick`, `--perf`, `--hidden`, `--config`, `--tab`.
 - Log file and a note when a closed program keeps being restarted by a service or scheduled task.
 
-[Unreleased]: https://github.com/VectorMan896/Argus/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/VectorMan896/Argus/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/VectorMan896/Argus/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/VectorMan896/Argus/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/VectorMan896/Argus/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/VectorMan896/Argus/compare/v0.1.0...v0.2.0

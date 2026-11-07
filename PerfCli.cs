@@ -16,6 +16,27 @@ internal static class PerfCli
             return;
         }
 
+        if (o.StartersFile != null)
+        {
+            var found = Persistence.Find(o.StartersFile);
+            P($"What starts {o.StartersFile} (read-only, nothing is changed):");
+            if (found.Count == 0) P("  nothing found (or it is a core Windows program, which Argus never lists).");
+            foreach (var src in found) P($"  {src.KindLabel,-16} {src.Display}  [{src.Name}]  {src.Detail}{(src.NeedsAdmin ? "  (needs administrator)" : "")}");
+            return;
+        }
+
+        if (o.SignatureFile != null)
+        {
+            var sig = Authenticode.Check(o.SignatureFile);
+            P($"{o.SignatureFile}");
+            P($"  signature : {sig.State} ({sig.Detail})");
+            if (sig.Publisher != null) P($"  publisher : {sig.Publisher}");
+            if (sig.Subject != null) P($"  subject   : {sig.Subject}");
+            if (sig.Issuer != null) P($"  issuer    : {sig.Issuer}");
+            if (sig.Thumbprint != null) P($"  thumbprint: {sig.Thumbprint}");
+            return;
+        }
+
         if (o.Usage)
         {
             var cpu = new CpuMeter(); using var gpu = new GpuMeter();

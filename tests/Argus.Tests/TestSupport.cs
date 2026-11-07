@@ -38,7 +38,8 @@ internal static class Fake
         string path = System.IO.Path.Combine(dir, exeName);
         File.Copy(System.IO.Path.Combine(Environment.SystemDirectory, "PING.EXE"), path, true);
         var p = Process.Start(new ProcessStartInfo(path, "-t 127.0.0.1") { UseShellExecute = false, CreateNoWindow = true })!;
-        Thread.Sleep(600);
+        for (int i = 0; i < 50 && Native.GetProcessPath(p.Id) == null; i++) Thread.Sleep(100);    // up to 5 s for it to be visible
+        Thread.Sleep(300);
         return p;
     }
 

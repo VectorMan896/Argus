@@ -255,7 +255,7 @@ internal sealed class Detector
     }
 
     /// <summary>Heuristic "does this look off?" score with human-readable reasons.</summary>
-    private (int Score, List<string> Why) Score(string name, string? path, bool hasRealWindow)
+    internal (int Score, List<string> Why) Score(string name, string? path, bool hasRealWindow)
     {
         var why = new List<string>();
         int score = 0;
@@ -268,6 +268,17 @@ internal sealed class Detector
         }
 
         if (Safety.IsInTrustedInstallDir(path)) return (score, why);
+
+        // digital signature, checked by Windows itself: a valid signature from a trusted publisher clears the usual oddities
+        // (an installer in Temp, a tray program with no window), while a signature that no longer matches the file is a red flag
+        var sig = Authenticode.Check(path);
+        if (sig.State == SigState.Valid)
+        {
+            why.Add($"signed by {sig.Publisher ?? "a trusted publisher"}");
+            return (score, why);                      // only the "pretending to be a Windows component" points can remain
+        }
+        if (sig.State == SigState.Invalid) { score += 3; why.Add("its digital signature no longer matches the file (it was changed after signing)"); }
+        else if (sig.State == SigState.Untrusted) { score += 1; why.Add($"signed, but {sig.Detail}"); }
 
         string lower = path;
         if (SuspiciousDirs.Any(d => lower.Contains(d, StringComparison.OrdinalIgnoreCase)))

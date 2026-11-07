@@ -131,6 +131,44 @@ public sealed class UpdaterTests : IDisposable
         Assert.False(string.IsNullOrEmpty(reason));
     }
 
+    // ---- where Argus is allowed to replace itself --------------------------------------------------------
+
+    [Fact]
+    public void Temporary_folders_are_recognised()
+    {
+        Assert.True(Updater.IsTemporaryLocation(Path.Combine(Path.GetTempPath(), "Temp1_Argus-0.4.0-win-x64.zip", "Argus.exe")));   // straight out of the zip window
+        Assert.True(Updater.IsTemporaryLocation(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp", "Argus", "Argus.exe")));
+        Assert.False(Updater.IsTemporaryLocation(@"C:\Users\someone\Apps\Argus\Argus.exe"));
+        Assert.False(Updater.IsTemporaryLocation(@"C:\Program Files\Argus\Argus.exe"));
+        Assert.False(Updater.IsTemporaryLocation(null));
+        Assert.False(Updater.IsTemporaryLocation(""));
+    }
+
+    [Fact]
+    public void A_copy_in_a_temporary_folder_is_told_to_move_and_is_never_updated()
+    {
+        string exe = Path.Combine(Path.GetTempPath(), "Temp1_Argus-0.4.0-win-x64.zip", "Argus.exe");
+        Assert.False(Updater.CanSelfUpdate(exe, builtFromSource: false, out var reason));
+        Assert.Contains("temporary folder", reason);
+        Assert.Contains("Extract it to a folder you keep", reason);
+    }
+
+    [Fact]
+    public void Other_copies_that_must_not_update_are_refused_with_a_reason()
+    {
+        Assert.False(Updater.CanSelfUpdate(@"C:\Tools\Argus\notepad.exe", false, out var r1)); Assert.Contains("not the portable", r1);
+        Assert.False(Updater.CanSelfUpdate(null, false, out var r2)); Assert.Contains("not the portable", r2);
+        Assert.False(Updater.CanSelfUpdate(Path.Combine(AppContext.BaseDirectory, "Argus.exe"), builtFromSource: true, out var r3)); Assert.Contains("built from source", r3);
+    }
+
+    [Fact]
+    public void A_portable_copy_in_a_normal_writable_folder_may_update_itself()
+    {
+        // the test output folder is writable and is not a temporary folder
+        Assert.True(Updater.CanSelfUpdate(Path.Combine(AppContext.BaseDirectory, "Argus.exe"), builtFromSource: false, out var reason), reason);
+        Assert.Equal("", reason);
+    }
+
     // ---- checksums ------------------------------------------------------------------------------------
 
     [Fact]

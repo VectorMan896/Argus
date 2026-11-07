@@ -5,3 +5,7 @@ obj/
 *.suo
 dist/
 obj/portable-build/
+
+# never commit signing certificates
+*.pfx
+*.p12
