@@ -13,7 +13,7 @@ internal sealed class CliOptions
     public int? HungSec, HogSec;
     public double? HogCpu;
     public int? TrimPid, TempDays, ThrottlePid;
-    public bool TrimAll, TempClean, StartupOn;
+    public bool TrimAll, TempClean, StartupOn, Usage;
     public string? StartupName, TempDir;
 }
 
@@ -42,6 +42,7 @@ internal static class Cli
                 case "--pick": o.Mode = CliMode.Pick; break;
                 case "--version": o.Mode = CliMode.Version; break;
                 case "--perf": o.Mode = CliMode.Perf; break;
+                case "--usage": o.Mode = CliMode.Perf; o.Usage = true; break;
                 case "--trim": o.Mode = CliMode.Perf; o.TrimAll = true; break;
                 case "--throttle-pid": o.Mode = CliMode.Perf; if (int.TryParse(Next(), out int thp)) o.ThrottlePid = thp; break;
                 case "--trim-pid": o.Mode = CliMode.Perf; if (int.TryParse(Next(), out int tp)) o.TrimPid = tp; break;

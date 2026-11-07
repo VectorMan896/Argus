@@ -4,11 +4,6 @@ Ideas and known gaps, roughly in the order they are worth doing. Finished items 
 
 ## Asked for
 
-- [ ] **CPU and GPU graphs.** The Overview only has a memory dial. Add live history graphs (a few minutes of sparkline)
-  for CPU and GPU next to it, in the same card style.
-  - CPU: total from the `Processor Information` performance counters; also the top few processes.
-  - GPU: the vendor-neutral `GPU Engine` counters (`\GPU Engine(*)\Utilization Percentage`, Windows 10 1709+); show "not available" on
-    PCs without them. Sampling must stay cheap, since older PCs are the whole point.
 - [ ] **Self-updater**, so people do not have to re-download from GitHub.
   - This breaks the current "no network, ever" promise (README, SECURITY.md, SAFETY.md). Decide the wording first: *"Argus only connects to
     GitHub to check for updates, and only if you turn that on."*
@@ -20,6 +15,9 @@ Ideas and known gaps, roughly in the order they are worth doing. Finished items 
 
 ## Ideas
 
+- [ ] **Who is using it?** Show the top three programs by CPU and by GPU right now, under the new graphs, with a one-click "slow it down".
+- [ ] **Longer history.** Click a graph to expand it to 10 minutes or an hour (kept only in memory, never written to disk).
+- [ ] **Per-core CPU view** and a GPU memory readout for older graphics cards.
 - [ ] **Scheduled startup tasks.** Many older PCs are slowed by logon tasks in Task Scheduler, not just the startup list. Show them next to the
   startup programs and let the user disable one (disabling is reversible; deleting is not).
 - [ ] **Programs that keep coming back.** Some analytics programs are restarted by a service or scheduled task. Today Argus only warns. Offer to
@@ -35,7 +33,7 @@ Ideas and known gaps, roughly in the order they are worth doing. Finished items 
 
 - [ ] Faint vertical lines show in the empty space of the *Needs a decision* list.
 - [ ] An About page: version, license, links, and the ARGUS wordmark.
-- [ ] Check the Log page and the other pages at other window sizes and at 125% / 150% display scaling.
+- [ ] Check the Activity page and the other pages at other window sizes and at 125% / 150% display scaling.
 - [ ] Sign the exe. Unsigned downloads trigger a Windows SmartScreen warning.
 - [ ] Automated UI smoke test (open every page, assert nothing throws).
 - [ ] Tests for the hung-window and resource-hog detectors (they need a window that really hangs and a controllable CPU load).

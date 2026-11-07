@@ -7,6 +7,26 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-07
+
+### Added
+- **CPU and GPU history graphs** on the Overview, next to the memory dial: about two minutes of history, one reading per second, a big current
+  value, the peak, and a soft filled line that turns amber and then red as the load climbs.
+  - CPU comes from the system's idle/kernel/user times, so it needs no performance-counter setup and works on any PC.
+  - GPU comes from Windows' vendor-neutral "GPU Engine" counters and shows the busiest engine, the way Task Manager does. On PCs without them
+    (older Windows or driver) the card says so plainly instead of showing a made-up number.
+  - The CPU and GPU cards show the processor count and the graphics adapter name.
+  - Nothing is sampled while the window is hidden, minimised or on another page, so the graphs cost older PCs nothing when you are not looking.
+- `--usage` command-line option: prints the CPU and GPU load once a second.
+- 19 more tests (72 in total): CPU and GPU maths, the GPU instance-name parsing, the live readings, graph history and drawing, hardware names.
+
+### Changed
+- The Overview is now a four-column grid: status card, This PC, then Activity, CPU, GPU and Memory.
+- The cramped "Recent activity" text box is replaced by a compact **Activity** card: the latest events as tidy rows, plus an
+  **Open activity log** button.
+- The Log page is now called **Activity** (sidebar, header and docs). `--tab 5` opens it.
+- "Startup programs enabled" is shortened to "Startup programs" so it fits the narrower This PC card.
+
 ## [0.2.0] - 2026-11-07
 
 ### Added
@@ -50,6 +70,7 @@ First version.
 - Command line: `--version`, `--scan`, `--apply`, `--stack`, `--pick`, `--perf`, `--hidden`, `--config`, `--tab`.
 - Log file and a note when a closed program keeps being restarted by a service or scheduled task.
 
-[Unreleased]: https://github.com/VectorMan896/Argus/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/VectorMan896/Argus/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/VectorMan896/Argus/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/VectorMan896/Argus/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/VectorMan896/Argus/releases/tag/v0.1.0

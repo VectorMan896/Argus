@@ -26,5 +26,5 @@ to *Automatic*; analytics closing is the only destructive action that is *Automa
 programs matching your editable `blocklist.txt` (never anything in `exclusions.txt`).
 
 ## Before trusting it
-Start with every category on **Ask me** for a few days, read the Log tab, and add anything you rely on to
+Start with every category on **Ask me** for a few days, read the Activity page, and add anything you rely on to
 `exclusions.txt`.

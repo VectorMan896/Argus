@@ -9,7 +9,7 @@ internal sealed partial class MainForm
     private Meter _mMem = null!, _mDisk = null!, _mStart = null!;
     private KeyValue _kvUp = null!, _kvProc = null!;
     private RingGauge _gauge = null!;
-    private TextBox _recent = null!;
+    private ActivityPeek _peek = null!;
     private int _startupEnabled, _startupTotal = -1;
     private DateTime _lastOverview = DateTime.MinValue;
     private readonly Queue<string> _recentLines = new();
@@ -62,9 +62,8 @@ internal sealed partial class MainForm
 
     private Control BuildOverview()
     {
-        var grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 2, BackColor = Theme.Bg };
-        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 63));
-        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 37));
+        var grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 2, BackColor = Theme.Bg };
+        foreach (var w in new[] { 26f, 23f, 23f, 28f }) grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, w));
         grid.RowStyles.Add(new RowStyle(SizeType.Percent, 55));
         grid.RowStyles.Add(new RowStyle(SizeType.Percent, 45));
 
@@ -103,22 +102,33 @@ internal sealed partial class MainForm
         var sys = new Card { Dock = DockStyle.Fill, Title = "This PC", Subtitle = "Live numbers, refreshed every few seconds" };
         var flow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, BackColor = Theme.Card };
         FillWidth(flow);
-        _mMem = new Meter("Memory in use"); _mDisk = new Meter("System drive used"); _mStart = new Meter("Startup programs enabled");
+        _mMem = new Meter("Memory in use"); _mDisk = new Meter("System drive used"); _mStart = new Meter("Startup programs");
         _kvUp = new KeyValue("Up for"); _kvProc = new KeyValue("Running processes");
         foreach (Control c in new Control[] { _mMem, _mDisk, _mStart, _kvUp, _kvProc }) { c.Margin = new Padding(0, 0, 0, 8); flow.Controls.Add(c); }
         sys.Controls.Add(flow);
 
         // recent activity
-        var act = new Card { Dock = DockStyle.Fill, Title = "Recent activity", Subtitle = "The last things Argus did or noticed" };
-        _recent = DarkText(true, true);
-        act.Controls.Add(Holder(_recent));
+        var act = new Card { Dock = DockStyle.Fill, Title = "Activity", Subtitle = "The latest things Argus did" };
+        _peek = new ActivityPeek { Dock = DockStyle.Fill };
+        var openLog = new PillButton("Open activity log", "\uE81C", PillStyle.Secondary, 200);
+        openLog.Click += (_, _) => GoTo(5);
+        var actTable = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, BackColor = Theme.Card };
+        actTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        actTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+        actTable.Controls.Add(_peek, 0, 0); actTable.Controls.Add(openLog, 0, 1);
+        act.Controls.Add(actTable);
 
         // memory dial (the compass in the reference)
         var dial = new Card { Dock = DockStyle.Fill, Title = "Memory", Subtitle = "How full this PC's RAM is" };
         _gauge = new RingGauge { Dock = DockStyle.Fill, BackColor = Theme.Card };
         dial.Controls.Add(_gauge);
 
-        grid.Controls.Add(hero, 0, 0); grid.Controls.Add(sys, 1, 0); grid.Controls.Add(act, 0, 1); grid.Controls.Add(dial, 1, 1);
+        // live CPU and GPU history graphs
+        var (cpuCard, gpuCard) = BuildGraphCards();
+
+        grid.Controls.Add(hero, 0, 0); grid.SetColumnSpan(hero, 3);
+        grid.Controls.Add(sys, 3, 0);
+        grid.Controls.Add(act, 0, 1); grid.Controls.Add(cpuCard, 1, 1); grid.Controls.Add(gpuCard, 2, 1); grid.Controls.Add(dial, 3, 1);
         return grid;
     }
 
@@ -409,7 +419,7 @@ internal sealed partial class MainForm
 
     private Control BuildLog()
     {
-        var card = new Card { Dock = DockStyle.Fill, Title = "Log", Subtitle = "Also saved to the settings folder, so it survives restarts" };
+        var card = new Card { Dock = DockStyle.Fill, Title = "Activity", Subtitle = "Also saved to the settings folder, so it survives restarts" };
         var t = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, BackColor = Theme.Card };
         t.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         t.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
@@ -434,9 +444,9 @@ internal sealed partial class MainForm
             if (!File.Exists(Config.LogPath)) return;
             var lines = File.ReadAllLines(Config.LogPath);
             _logBox.Text = string.Join("\r\n", lines.Skip(Math.Max(0, lines.Length - 200))) + "\r\n";
-            foreach (var l in lines.Skip(Math.Max(0, lines.Length - 8))) _recentLines.Enqueue(l);
-            _recent.Text = string.Join("\r\n", _recentLines);
-            ScrollToEnd(_recent); ScrollToEnd(_logBox);
+            foreach (var l in lines.Skip(Math.Max(0, lines.Length - 3))) _recentLines.Enqueue(ShortLine(l));
+            _peek.Set(_recentLines);
+            ScrollToEnd(_logBox);
         }
         catch { }
     }
@@ -445,11 +455,13 @@ internal sealed partial class MainForm
     {
         if (_logBox.TextLength > 200_000) _logBox.Text = _logBox.Text[100_000..];
         _logBox.AppendText(line + "\r\n");
-        _recentLines.Enqueue(line);
-        while (_recentLines.Count > 8) _recentLines.Dequeue();
-        _recent.Text = string.Join("\r\n", _recentLines);
-        ScrollToEnd(_recent);
+        _recentLines.Enqueue(ShortLine(line));
+        while (_recentLines.Count > 3) _recentLines.Dequeue();
+        _peek.Set(_recentLines);
     }
+
+    /// <summary>"2026-11-07 15:22:13  text" becomes "15:22:13  text" for the narrow Recent activity card.</summary>
+    private static string ShortLine(string line) => line.Length > 11 && char.IsDigit(line[0]) && line[10] == ' ' ? line[11..] : line;
 
     private static void ScrollToEnd(TextBox tb) { try { tb.SelectionStart = tb.TextLength; tb.ScrollToCaret(); } catch { } }
 }

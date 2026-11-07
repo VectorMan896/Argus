@@ -16,6 +16,20 @@ internal static class PerfCli
             return;
         }
 
+        if (o.Usage)
+        {
+            var cpu = new CpuMeter(); using var gpu = new GpuMeter();
+            cpu.Read(); gpu.Read();
+            P($"CPU / GPU load, once a second for {o.SampleSec} s (GPU counters available: {gpu.Available})");
+            for (int i = 0; i < o.SampleSec; i++)
+            {
+                Thread.Sleep(1000);
+                double? c = cpu.Read(), g = gpu.Available ? gpu.Read() : null;
+                P($"  cpu {(c.HasValue ? c.Value.ToString("0.0") : "-"),5} %   gpu {(g.HasValue ? g.Value.ToString("0.0") : "-"),5} %");
+            }
+            return;
+        }
+
         if (o.ThrottlePid != null)
         {
             P($"pid {o.ThrottlePid}: {Perf.Throttle(o.ThrottlePid.Value, null)}");

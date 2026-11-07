@@ -8,7 +8,7 @@ Argus is a small Windows tray app that keeps an eye on your PC. It closes analyt
 programs and background resource hogs, neutralises invisible windows that swallow your clicks, and helps older PCs run
 better. It has exclusion lists, and a "click a window to close it" tool.
 
-**Version:** 0.2.0 (early; see [CHANGELOG.md](CHANGELOG.md)). **Platform:** Windows 10/11, x64. **Network:** none, ever.
+**Version:** 0.3.0 (early; see [CHANGELOG.md](CHANGELOG.md)). **Platform:** Windows 10/11, x64. **Network:** none, ever.
 
 ## What it does
 
@@ -27,12 +27,12 @@ A slim icon sidebar (white circle = current page) and rounded dark cards:
 
 | Page | What is there |
 |---|---|
-| Overview | status, counters since Argus started, live memory/drive/startup meters, recent activity, memory dial |
+| Overview | status, counters since Argus started, live CPU and GPU graphs, memory dial, system meters, latest activity |
 | Needs a decision | everything Argus flagged but did not handle on its own, with Close / Kill / Never touch / Details |
 | Performance | tips from your real numbers, startup programs, free up memory, old temp files |
 | Rules | Off / Ask / Auto per category, thresholds, options |
 | Lists | the blocklist and the exclusions, editable |
-| Log | everything Argus did |
+| Activity | everything Argus did, and why (also on the Overview as a short peek with a button) |
 
 ### Click a window to close it
 Press **Ctrl+Alt+K** (or use the button / tray menu). A border follows the window under your cursor (orange if it is an
@@ -76,8 +76,9 @@ Argus.exe --scan [--apply] [--sample N] [--out FILE]   # report what would be fl
 Argus.exe --stack X Y                                  # windows that would receive a click at X,Y
 Argus.exe --pick                                       # click-to-close tool without the main window
 Argus.exe --perf                                       # read-only performance overview
+Argus.exe --usage [--sample N]                         # print CPU and GPU load once a second
 Argus.exe --hidden                                     # start in the tray
-Argus.exe --tab N                                      # open a page: 0 Overview ... 5 Log
+Argus.exe --tab N                                      # open a page: 0 Overview ... 5 Activity
 Argus.exe --config DIR                                 # use another settings folder
 ```
 Output goes to `--out FILE` (the exe is a GUI-subsystem program).
@@ -92,7 +93,7 @@ powershell -ExecutionPolicy Bypass -File scripts/publish.ps1
 This writes `dist/Argus-<version>-win-x64.zip` and its `.sha256` checksum. The first publish downloads the .NET runtime packs from NuGet.
 The first launch of the portable exe is a few seconds slower because it unpacks its native files to `%TEMP%`.
 
-Run the automated tests (53 so far; they only use throwaway programs, folders and registry entries):
+Run the automated tests (72 so far; they only use throwaway programs, folders and registry entries):
 
 ```bash
 dotnet test tests/Argus.Tests/Argus.Tests.csproj

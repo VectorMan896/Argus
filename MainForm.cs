@@ -17,6 +17,7 @@ internal sealed partial class MainForm : Form
     private readonly ToolStripMenuItem _miPause = new("Pause monitoring");
     private readonly EventWaitHandle _showSignal = new(false, EventResetMode.AutoReset, "Local\\Argus.Show" + AppInfo.Instance);
     private readonly ToolTip _tt = new();
+    private readonly UsageSampler _sampler = new();
     private readonly System.Windows.Forms.Timer _tick = new() { Interval = 4000 };
 
     private readonly Panel _stage = new(), _header = new(), _host = new();
@@ -50,7 +51,7 @@ internal sealed partial class MainForm : Form
         AddPage("", "Performance", "Help an older PC run better, gently", BuildPerformance());
         AddPage("", "Rules", "What Argus does when it finds something, and how patient it is", BuildRules());
         AddPage("", "Lists", "What to close, and what to never touch", BuildLists());
-        AddPage("", "Log", "Everything Argus did", BuildLog());
+        AddPage("", "Activity", "Everything Argus did, and why", BuildLog());
 
         Log.Entry += line => { if (IsHandleCreated) BeginInvoke(() => AppendLog(line)); };
         _watcher.Updated += list => { if (IsHandleCreated) BeginInvoke(() => OnFindings(list)); };
@@ -64,7 +65,7 @@ internal sealed partial class MainForm : Form
 
         GoTo(initialTab);
         UpdateStatus();
-        Shown += (_, _) => { RefreshOverview(); if (_current == 2) RefreshPerf(); else RefreshStartupCounts(); };
+        Shown += (_, _) => { ScrollToEnd(_logBox); RefreshOverview(); if (_current == 2) RefreshPerf(); else RefreshStartupCounts(); };
         Log.Write($"Argus {AppInfo.Version} started ({Config.Block.Count} blocklist, {Config.Excl.Count} exclusions).");
         LoadLogTail();
         _watcher.Start();
@@ -128,6 +129,7 @@ internal sealed partial class MainForm : Form
         _picker.Cancel();
         _tray.Visible = false;
         _watcher.Dispose();
+        _sampler.Dispose();
         Application.Exit();
     }
 
@@ -211,6 +213,7 @@ internal sealed partial class MainForm : Form
         _title.Text = _pages[i].Title; _subtitle.Text = _pages[i].Sub;
         if (i == 0) RefreshOverview();
         else if (i == 2) RefreshPerf();
+        UpdateSampling();
     }
 
     // ---- tray -------------------------------------------------------------------------------------------

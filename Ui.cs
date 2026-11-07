@@ -598,3 +598,108 @@ internal sealed class RingGauge : Ctl
         Theme.Draw(g, Pill, Theme.Ui(9f, FontStyle.Bold), Rectangle.Round(pr), Theme.Bg, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
     }
 }
+
+/// <summary>Live history graph (about two minutes): big current value, peak, light grid, soft filled line.</summary>
+internal sealed class LineGraph : Ctl
+{
+    private readonly Queue<double> _v = new();
+
+    public int Capacity { get; set; } = 120;
+    public string? Unavailable { get; private set; }
+    public int Count => _v.Count;
+    public double? Last => _v.Count > 0 ? _v.Last() : null;
+
+    public LineGraph() { Cursor = Cursors.Default; MinimumSize = new Size(150, 120); }
+
+    public void Push(double percent)
+    {
+        _v.Enqueue(Math.Clamp(percent, 0, 100));
+        while (_v.Count > Capacity) _v.Dequeue();
+        Invalidate();
+    }
+
+    public void SetUnavailable(string? message)
+    {
+        if (Unavailable == message) return;
+        Unavailable = message; Invalidate();
+    }
+
+    private static Color Level(double p) => p >= 90 ? Theme.Bad : p >= 70 ? Theme.Warn : Theme.Accent;
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics; Theme.Smooth(g);
+        if (Unavailable != null)
+        {
+            Theme.Draw(g, Unavailable, Theme.Ui(9.5f), new Rectangle(8, 0, Width - 16, Height), Theme.Muted,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak);
+            return;
+        }
+
+        double last = Last ?? 0; var col = Level(last);
+        Theme.Draw(g, Last == null ? "--" : $"{last:0}%", Theme.Ui(22f, FontStyle.Bold), new Rectangle(0, 0, Width / 2, 38), col, TextFormatFlags.Left | TextFormatFlags.Top);
+        double peak = _v.Count > 0 ? _v.Max() : 0;
+        Theme.Draw(g, $"peak {peak:0}%", Theme.Ui(8.5f), new Rectangle(Width / 2, 10, Width / 2, 20), Theme.Muted, TextFormatFlags.Right | TextFormatFlags.Top);
+
+        var plot = new RectangleF(0, 48, Width, Math.Max(10, Height - 48 - 22));
+        using (var grid = new Pen(Theme.Line, 1f))
+            foreach (double f in new[] { 0.0, 0.5, 1.0 })
+            {
+                float y = plot.Bottom - (float)f * plot.Height;
+                g.DrawLine(grid, plot.Left, y, plot.Right, y);
+            }
+        Theme.Draw(g, "100", Theme.Ui(7f), new Rectangle((int)plot.Right - 32, (int)plot.Top + 2, 32, 12), Theme.Faint, TextFormatFlags.Right | TextFormatFlags.Top);
+        Theme.Draw(g, "50", Theme.Ui(7f), new Rectangle((int)plot.Right - 32, (int)(plot.Top + plot.Height / 2) + 2, 32, 12), Theme.Faint, TextFormatFlags.Right | TextFormatFlags.Top);
+
+        if (_v.Count >= 2)
+        {
+            int n = _v.Count; float step = plot.Width / (Capacity - 1);
+            var pts = new PointF[n]; int i = 0;
+            foreach (var v in _v) { pts[i] = new PointF(plot.Right - (n - 1 - i) * step, plot.Bottom - (float)(v / 100.0) * plot.Height); i++; }
+            var area = pts.Concat(new[] { new PointF(pts[^1].X, plot.Bottom), new PointF(pts[0].X, plot.Bottom) }).ToArray();
+            using (var br = new LinearGradientBrush(new RectangleF(plot.X, plot.Y, plot.Width, plot.Height + 1), Color.FromArgb(95, col), Color.FromArgb(0, col), LinearGradientMode.Vertical))
+                g.FillPolygon(br, area);
+            using (var pen = new Pen(col, 2.2f) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round }) g.DrawLines(pen, pts);
+            using (var dot = new SolidBrush(col)) g.FillEllipse(dot, pts[^1].X - 3.5f, pts[^1].Y - 3.5f, 7, 7);
+        }
+
+        string span = Capacity >= 60 ? $"{Capacity / 60} min ago" : $"{Capacity} s ago";
+        Theme.Draw(g, span, Theme.Ui(7.5f), new Rectangle(0, Height - 18, Width / 2, 16), Theme.Faint, TextFormatFlags.Left | TextFormatFlags.Top);
+        Theme.Draw(g, "now", Theme.Ui(7.5f), new Rectangle(Width / 2, Height - 18, Width / 2, 16), Theme.Faint, TextFormatFlags.Right | TextFormatFlags.Top);
+    }
+}
+/// <summary>The latest few events as tidy rows (time + message, wrapped to two lines), newest first.</summary>
+internal sealed class ActivityPeek : Ctl
+{
+    private string[] _lines = Array.Empty<string>();
+
+    public ActivityPeek() { Cursor = Cursors.Default; }
+
+    public void Set(IEnumerable<string> lines)
+    {
+        _lines = lines.Reverse().ToArray();       // newest first
+        Invalidate();
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics; Theme.Smooth(g);
+        if (_lines.Length == 0)
+        {
+            Theme.Draw(g, "Nothing yet.", Theme.Ui(9.5f), new Rectangle(0, 0, Width, 28), Theme.Muted, TextFormatFlags.Left | TextFormatFlags.Top);
+            return;
+        }
+        const int rowH = 56;
+        for (int i = 0, y = 0; i < _lines.Length && y + rowH <= Height + 4; i++, y += rowH)
+        {
+            string raw = _lines[i];
+            bool hasTime = raw.Length >= 8 && raw[2] == ':' && raw[5] == ':';
+            string time = hasTime ? raw[..8] : "";
+            string msg = hasTime ? raw[8..].TrimStart() : raw;
+            if (i > 0) { using var p = new Pen(Theme.Line); g.DrawLine(p, 0, y, Width, y); }
+            Theme.Draw(g, time, Theme.Ui(7.5f, FontStyle.Bold), new Rectangle(0, y + 6, Width, 14), Theme.Faint, TextFormatFlags.Left | TextFormatFlags.Top);
+            Theme.Draw(g, msg, Theme.Ui(9f), new Rectangle(0, y + 20, Width, rowH - 22), Theme.Muted,
+                TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.WordBreak | TextFormatFlags.EndEllipsis);
+        }
+    }
+}
