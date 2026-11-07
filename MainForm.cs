@@ -68,6 +68,7 @@ internal sealed partial class MainForm : Form
         Shown += (_, _) => { ScrollToEnd(_logBox); RefreshOverview(); if (_current == 2) RefreshPerf(); else RefreshStartupCounts(); };
         Log.Write($"Argus {AppInfo.Version} started ({Config.Block.Count} blocklist, {Config.Excl.Count} exclusions).");
         LoadLogTail();
+        InitUpdates();
         _watcher.Start();
     }
 
@@ -130,6 +131,7 @@ internal sealed partial class MainForm : Form
         _tray.Visible = false;
         _watcher.Dispose();
         _sampler.Dispose();
+        if (!_exitingForUpdate) UpdateRecovery.Confirm();     // a clean exit counts as "the new version worked"
         Application.Exit();
     }
 
@@ -141,9 +143,9 @@ internal sealed partial class MainForm : Form
 
         _header.Dock = DockStyle.Top; _header.Height = 96; _header.BackColor = Theme.Bg;
         _title.Font = Theme.Ui(21f, FontStyle.Bold); _title.ForeColor = Theme.Text; _title.BackColor = Theme.Bg;
-        _title.AutoSize = false; _title.SetBounds(10, 12, 520, 40);
+        _title.AutoSize = false; _title.AutoEllipsis = true; _title.SetBounds(10, 12, 520, 40);
         _subtitle.Font = Theme.Ui(10f); _subtitle.ForeColor = Theme.Muted; _subtitle.BackColor = Theme.Bg;
-        _subtitle.AutoSize = false; _subtitle.SetBounds(12, 54, 560, 24);
+        _subtitle.AutoSize = false; _subtitle.AutoEllipsis = true; _subtitle.SetBounds(12, 54, 560, 24);
 
         _btnScan = new PillButton("Scan now", "", PillStyle.Secondary);
         _btnPick = new PillButton("Click a window to close", "", PillStyle.Primary);
@@ -151,7 +153,7 @@ internal sealed partial class MainForm : Form
         _btnScan.Click += (_, _) => _watcher.ScanNow();
         _btnPick.Click += (_, _) => StartPick();
         _tt.SetToolTip(_btnPick, "Ctrl+Alt+K");
-        _header.Controls.AddRange(new Control[] { _title, _subtitle, _pill, _btnScan, _btnPick });
+        _header.Controls.AddRange(new Control[] { _title, _subtitle, _pill, _btnScan, _btnPick, _btnUpdate });
         _header.Resize += (_, _) => LayoutHeader();
 
         _host.Dock = DockStyle.Fill; _host.BackColor = Theme.Bg;
@@ -166,6 +168,10 @@ internal sealed partial class MainForm : Form
         _btnPick.Location = new Point(right - _btnPick.Width, top);
         _btnScan.Location = new Point(_btnPick.Left - 10 - _btnScan.Width, top);
         _pill.Location = new Point(_btnScan.Left - 14 - _pill.Width, top + 2);
+        _btnUpdate.Location = new Point(_pill.Left - 12 - _btnUpdate.Width, top);
+        int limit = (_btnUpdate.Visible ? _btnUpdate.Left : _pill.Left) - 16;
+        _title.Width = Math.Max(120, Math.Min(520, limit - _title.Left));
+        _subtitle.Width = Math.Max(120, Math.Min(580, limit - _subtitle.Left));
     }
 
     private void BuildSidebar()
@@ -234,7 +240,11 @@ internal sealed partial class MainForm : Form
         _tray.Text = "Argus";
         _tray.Visible = true;
         _tray.DoubleClick += (_, _) => ShowMain();
-        _tray.BalloonTipClicked += (_, _) => ShowMain();
+        _tray.BalloonTipClicked += (_, _) =>
+        {
+            ShowMain();
+            if (_trayWantsUpdate) { _trayWantsUpdate = false; ShowUpdateDialog(); }
+        };
     }
 
     private sealed class DarkColors : ProfessionalColorTable
@@ -252,6 +262,7 @@ internal sealed partial class MainForm : Form
 
     private void Notify(Finding f)
     {
+        _trayWantsUpdate = false;                       // this notice is about a finding, not an update
         string text = $"{f.ProcName}: {f.Reason}";
         _tray.ShowBalloonTip(6000, $"Argus - {f.CategoryLabel}", text.Length > 220 ? text[..220] + "..." : text, ToolTipIcon.Warning);
     }

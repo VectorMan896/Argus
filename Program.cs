@@ -8,7 +8,7 @@ internal static class Program
         var o = Cli.Parse(args);
         Config.Init(o.ConfigDir);
 
-        if (o.Mode is CliMode.Scan or CliMode.Stack or CliMode.Perf or CliMode.Version)
+        if (o.Mode is CliMode.Scan or CliMode.Stack or CliMode.Perf or CliMode.Version or CliMode.Update)
             return Cli.Run(o);
 
         ApplicationConfiguration.Initialize();
@@ -19,6 +19,7 @@ internal static class Program
             return 0;
         }
 
+        if (o.UpdatedFrom != null) UpdateRecovery.WaitForExit(o.UpdatedFrom.Value, 20);     // the old version is exiting: let it go first
         using var mutex = new Mutex(true, "Local\\Argus.SingleInstance" + AppInfo.Instance, out bool first);
         if (!first)
         {
@@ -26,6 +27,9 @@ internal static class Program
             try { EventWaitHandle.OpenExisting("Local\\Argus.Show" + AppInfo.Instance).Set(); } catch { }
             return 0;
         }
+
+        // a freshly installed version that failed to start twice is rolled back to the previous one
+        if (UpdateRecovery.OnStart()) return 0;
 
         Application.ThreadException += (_, e) => Log.Write("UI error: " + e.Exception.Message);
         Application.Run(new MainForm(startHidden: o.StartHidden, initialTab: o.Tab));

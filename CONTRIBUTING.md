@@ -47,6 +47,11 @@ The suite covers the safety rails, so run it before every pull request and add a
 Tests only touch throwaway programs (renamed copies of `ping.exe`), their own folders inside your temp folder, and one fake startup entry that
 is removed again. If you change a safety rule, check the tests can fail: break the rule on purpose and confirm the relevant tests go red.
 
+## Testing the updater
+The unit tests use a fake GitHub on a loopback port (`UpdaterTests.cs`). To try a real update by hand, build two portable copies with different
+`-p:Version=` values, serve the newer one from a local server and run the older one with `ARGUS_UPDATE_URL=http://127.0.0.1:PORT`
+(only loopback `http://` addresses are ever accepted there; the real updater talks to GitHub only).
+
 ## Portable build
 `powershell -ExecutionPolicy Bypass -File scripts/publish.ps1` builds the self-contained zip in `dist/`. A version tag (`vX.Y.Z`) makes CI do the same
 and attach it to a GitHub release.

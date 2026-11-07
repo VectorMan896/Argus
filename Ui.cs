@@ -225,6 +225,12 @@ internal sealed class RowCard : Card
         Place();
     }
 
+    public void SetHint(Control ctl, string hint)
+    {
+        for (int i = 0; i < _rows.Count; i++)
+            if (ReferenceEquals(_rows[i].Ctl, ctl)) { _rows[i] = (_rows[i].Label, hint, ctl); Invalidate(); return; }
+    }
+
     private void Place()
     {
         for (int i = 0; i < _rows.Count; i++)
@@ -255,7 +261,7 @@ internal sealed class RowCard : Card
 
 // ---- buttons ---------------------------------------------------------------------------------
 
-internal enum PillStyle { Primary, Secondary, Danger, Ghost }
+internal enum PillStyle { Primary, Secondary, Danger, Ghost, Accent }
 
 internal sealed class PillButton : Ctl
 {
@@ -276,6 +282,7 @@ internal sealed class PillButton : Ctl
         {
             case PillStyle.Primary: bg = Hover ? Color.White : Theme.Text; fg = Theme.Bg; break;
             case PillStyle.Danger: bg = Hover ? Color.FromArgb(92, 38, 46) : Color.FromArgb(66, 30, 36); fg = Color.FromArgb(255, 150, 158); break;
+            case PillStyle.Accent: bg = Hover ? Color.FromArgb(160, 205, 240) : Theme.Accent; fg = Theme.Bg; break;
             case PillStyle.Ghost: bg = Hover ? Theme.Chip : Theme.Card; fg = Theme.Muted; border = Theme.Line; break;
             default: bg = Hover ? Theme.ChipHover : Theme.Chip; fg = Theme.Text; break;
         }

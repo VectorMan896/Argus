@@ -7,6 +7,31 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-07
+
+### Added
+- **Self-updater**, so nobody has to re-download Argus from GitHub. Off by default: nothing touches the network until the user turns on
+  *Rules > Updates > Check for updates* (once a day) or presses *Check now*.
+  - An **Update** button in the header and a tray notice appear when a newer release exists; the update window shows the release notes with
+    *Update and restart*, *Skip this version* and *Later*. Nothing is downloaded until Update is pressed.
+  - Downloads come only from GitHub over https, and must match the release's published SHA-256 checksum; only `Argus.exe` and plain documents
+    are unpacked (a zip path that tries to leave its folder is rejected), and the program inside must report the announced version.
+  - The old version is kept as `Argus.exe.old` until the new one has run for ten seconds, and Argus rolls back by itself if the new version
+    fails to start twice.
+  - Only the portable `Argus.exe` in a writable folder updates itself; a build made from source never overwrites itself.
+- `--update [--yes] [--no-restart]` on the command line (`--check-update` is the same without installing), and `--updated-from PID` used
+  internally when restarting.
+- 53 more tests (125 in total): version ordering, reading GitHub's answer, checksums, tampered or oversized downloads, unsafe zip paths, the file
+  swap, rollback, a full install against a fake GitHub on a loopback address, and drawing of the new Updates card and Update button.
+- Checked end to end by hand with two real portable builds and a local fake GitHub: check only, a tampered checksum (refused, nothing
+  changed), a full install from the update window with the real mouse (restart, confirm, old version removed), and the automatic rollback.
+
+### Fixed
+- Page titles and subtitles in the header no longer run underneath the buttons on the right.
+
+### Changed
+- Argus no longer promises "no network, ever": it makes no network connections unless update checks are turned on (README, SECURITY, SAFETY updated).
+
 ## [0.3.0] - 2026-11-07
 
 ### Added
@@ -70,7 +95,8 @@ First version.
 - Command line: `--version`, `--scan`, `--apply`, `--stack`, `--pick`, `--perf`, `--hidden`, `--config`, `--tab`.
 - Log file and a note when a closed program keeps being restarted by a service or scheduled task.
 
-[Unreleased]: https://github.com/VectorMan896/Argus/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/VectorMan896/Argus/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/VectorMan896/Argus/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/VectorMan896/Argus/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/VectorMan896/Argus/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/VectorMan896/Argus/releases/tag/v0.1.0

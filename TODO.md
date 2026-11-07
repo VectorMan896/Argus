@@ -2,19 +2,12 @@
 
 Ideas and known gaps, roughly in the order they are worth doing. Finished items move to [CHANGELOG.md](CHANGELOG.md).
 
-## Asked for
-
-- [ ] **Self-updater**, so people do not have to re-download from GitHub.
-  - This breaks the current "no network, ever" promise (README, SECURITY.md, SAFETY.md). Decide the wording first: *"Argus only connects to
-    GitHub to check for updates, and only if you turn that on."*
-  - Opt-in and off by default. Check at most once a day; show the changelog; never install silently.
-  - Download the portable zip and its `.sha256` from the GitHub release (CI already attaches both), over HTTPS, and verify the hash before
-    anything is replaced. Better still, code-sign the exe and verify the signature.
-  - Replace the running exe through a small helper that waits for Argus to exit, keeps the previous version for rollback, and restarts it.
-  - Needs: a real GitHub repository with releases, and tests for the version comparison and the hash check.
-
 ## Ideas
 
+- [ ] **Sign the exe, and check the signature in the updater.** A code-signing certificate also removes the SmartScreen warning, and it is the only
+  thing that protects the updater against a taken-over GitHub release (a checksum published next to the file cannot).
+- [ ] **Test the update window by script.** The updater logic and the swap/rollback are tested, but the window itself is only checked by hand.
+- [ ] **Package managers.** A winget / Scoop manifest, as another way to get updates.
 - [ ] **Who is using it?** Show the top three programs by CPU and by GPU right now, under the new graphs, with a one-click "slow it down".
 - [ ] **Longer history.** Click a graph to expand it to 10 minutes or an hour (kept only in memory, never written to disk).
 - [ ] **Per-core CPU view** and a GPU memory readout for older graphics cards.

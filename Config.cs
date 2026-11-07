@@ -30,6 +30,10 @@ internal sealed class Settings
     // Older-PC performance helpers
     public HogAction HogAction { get; set; } = HogAction.Throttle;   // slow hogs down instead of closing them
     public int AutoTrimBelowPercent { get; set; }                    // 0 = never; else page out idle background programs when available RAM drops below this %
+    // Updates (off by default: Argus does not touch the network unless this is turned on)
+    public bool UpdateCheck { get; set; }                            // look for a new release about once a day
+    public DateTime? LastUpdateCheckUtc { get; set; }
+    public string? SkippedVersion { get; set; }                      // "skip this version" in the update dialog
     public int TempAgeDays { get; set; } = 7;                        // temp files newer than this are never touched
 
     public Handling For(Category c) => c switch

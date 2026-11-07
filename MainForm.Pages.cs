@@ -350,6 +350,7 @@ internal sealed partial class MainForm
         other.AddRow("Free memory when RAM free is below", "0 = never; nothing is closed", Step(0, 50, s.AutoTrimBelowPercent, v => s.AutoTrimBelowPercent = (int)v, 5, " %"));
         other.AddRow("Temp cleanup: files older than", "Cleanup is always manual", Step(1, 365, s.TempAgeDays, v => s.TempAgeDays = (int)v, 1, " days"));
         right.Controls.Add(other);
+        right.Controls.Add(BuildUpdatesCard());
         return grid;
     }
 

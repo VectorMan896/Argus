@@ -9,7 +9,12 @@ Argus changes things on your PC, so it is built to be gentle and hard to misuse.
 - Close the program that started it (your terminal, shell, or Claude) or itself.
 - Delete startup entries, registry keys, or any file outside your own temp folder.
 - Follow links/junctions while cleaning temp files, or touch recent, read-only or in-use files.
-- Use the network or ask for administrator rights.
+- Use the network, except for the optional update feature (off by default, GitHub only), or ask for administrator rights.
+- Install an update that fails its checksum or version check, or overwrite a copy built from source.
+
+## Updates
+Update checks are off until you turn them on. An install only happens when you press **Update and restart**. Your current version stays on disk
+(`Argus.exe.old`) until the new one has run for ten seconds, and Argus goes back to it automatically if the new one fails to start twice.
 
 ## What is reversible
 | Action | How to undo |

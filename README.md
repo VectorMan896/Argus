@@ -8,7 +8,7 @@ Argus is a small Windows tray app that keeps an eye on your PC. It closes analyt
 programs and background resource hogs, neutralises invisible windows that swallow your clicks, and helps older PCs run
 better. It has exclusion lists, and a "click a window to close it" tool.
 
-**Version:** 0.3.0 (early; see [CHANGELOG.md](CHANGELOG.md)). **Platform:** Windows 10/11, x64. **Network:** none, ever.
+**Version:** 0.4.0 (early; see [CHANGELOG.md](CHANGELOG.md)). **Platform:** Windows 10/11, x64. **Network:** none, unless you turn on update checks (then only GitHub).
 
 ## What it does
 
@@ -30,7 +30,7 @@ A slim icon sidebar (white circle = current page) and rounded dark cards:
 | Overview | status, counters since Argus started, live CPU and GPU graphs, memory dial, system meters, latest activity |
 | Needs a decision | everything Argus flagged but did not handle on its own, with Close / Kill / Never touch / Details |
 | Performance | tips from your real numbers, startup programs, free up memory, old temp files |
-| Rules | Off / Ask / Auto per category, thresholds, options |
+| Rules | Off / Ask / Auto per category, thresholds, options, updates |
 | Lists | the blocklist and the exclusions, editable |
 | Activity | everything Argus did, and why (also on the Overview as a short peek with a button) |
 
@@ -77,11 +77,27 @@ Argus.exe --stack X Y                                  # windows that would rece
 Argus.exe --pick                                       # click-to-close tool without the main window
 Argus.exe --perf                                       # read-only performance overview
 Argus.exe --usage [--sample N]                         # print CPU and GPU load once a second
+Argus.exe --update [--yes] [--no-restart]              # look for a newer release; --yes installs it (portable exe only)
 Argus.exe --hidden                                     # start in the tray
 Argus.exe --tab N                                      # open a page: 0 Overview ... 5 Activity
 Argus.exe --config DIR                                 # use another settings folder
 ```
 Output goes to `--out FILE` (the exe is a GUI-subsystem program).
+
+## Updates
+Argus can update itself, so nobody has to re-download it from GitHub. It is **off by default**: nothing touches the network until you
+turn on *Rules > Updates > Check for updates* (about once a day) or press **Check now**.
+
+When a newer release exists, an **Update** button appears in the header (and a tray notice). It opens a window with the release notes and
+three choices: *Update and restart*, *Skip this version*, *Later*. Nothing is downloaded until you press Update, and then:
+
+1. the zip and its SHA-256 checksum are downloaded from the GitHub release (only github.com / githubusercontent.com over https);
+2. the zip must match the checksum, only `Argus.exe` and plain documents are unpacked, and the program inside must say it is the announced version;
+3. your current version is kept as `Argus.exe.old`; the new one is swapped in and started;
+4. after ten healthy seconds (or a clean exit) the old version is deleted. If the new one fails to start twice, Argus goes back to the old one by itself.
+
+Only the portable `Argus.exe` in a writable folder updates itself. A copy built from source never overwrites itself: update that one with
+`git pull` and a rebuild. See [SECURITY.md](SECURITY.md) for what the checksum does and does not protect against.
 
 ## Portable build and tests
 Make one self-contained `Argus.exe` (about 47 MB, no .NET install needed, so it runs on a PC that has nothing installed):
@@ -93,7 +109,7 @@ powershell -ExecutionPolicy Bypass -File scripts/publish.ps1
 This writes `dist/Argus-<version>-win-x64.zip` and its `.sha256` checksum. The first publish downloads the .NET runtime packs from NuGet.
 The first launch of the portable exe is a few seconds slower because it unpacks its native files to `%TEMP%`.
 
-Run the automated tests (72 so far; they only use throwaway programs, folders and registry entries):
+Run the automated tests (125 so far; they only use throwaway programs, folders and registry entries):
 
 ```bash
 dotnet test tests/Argus.Tests/Argus.Tests.csproj
