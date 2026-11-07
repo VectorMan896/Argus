@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <AssemblyName>Argus</AssemblyName>
+    <RootNamespace>Argus</RootNamespace>
+    <Version>0.2.0</Version>
+    <Authors>VectorMan896</Authors>
+    <Copyright>Copyright (c) 2026 VectorMan896</Copyright>
+    <!-- Argus builds its UI in code (no Visual Studio designer), so designer-serialization analyzer rules do not apply -->
+    <NoWarn>$(NoWarn);WFO1000</NoWarn>
+    <ApplicationIcon>assets\logo\argus.ico</ApplicationIcon>
+    <Description>Closes analytics/telemetry processes, hung programs, background resource hogs and invisible click-blocking windows.</Description>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests\**" />
+    <None Remove="tests\**" />
+    <InternalsVisibleTo Include="Argus.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="assets\logo\argus-icon-tile-light.png" LogicalName="argus-icon-tile-light.png" />
+    <EmbeddedResource Include="assets\logo\argus.ico" LogicalName="argus.ico" />
+  </ItemGroup>
+
+</Project>
