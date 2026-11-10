@@ -17,7 +17,9 @@ jobs:
       - name: Build
         run: dotnet build Argus.csproj -c Release
       - name: Test
-        run: dotnet test tests/Argus.Tests/Argus.Tests.csproj -c Release
+        # same tests as before; a failure is also printed as an annotation and in the run summary, which are readable without signing in to GitHub
+        shell: pwsh
+        run: ./scripts/ci-test.ps1
 
   portable:
     # Only for version tags (v0.2.0, ...): builds the portable zip and attaches it, with its checksum, to a GitHub release.
