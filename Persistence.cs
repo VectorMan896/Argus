@@ -124,6 +124,21 @@ internal static class Persistence
         return list;
     }
 
+    /// <summary>
+    /// A "keeps coming back" finding for one program, listing everything that starts it. Null when nothing does (or it is core Windows).
+    /// Used by the watcher after repeated closes and by the "What restarts it?" button. Nothing is changed.
+    /// </summary>
+    public static Finding? FindingFor(string name, string? path, string reasonPrefix = "")
+    {
+        var sources = Find(path);
+        if (sources.Count == 0) return null;
+        return new Finding
+        {
+            Key = "respawn:" + name, Category = Category.Respawn, ProcName = name, Path = path, Sources = sources,
+            Reason = reasonPrefix + "Restarted by: " + string.Join("; ", sources.Select(s => $"{s.KindLabel} \"{s.Display}\"")),
+        };
+    }
+
     internal static bool SameExe(string? commandOrPath, string target)
     {
         if (string.IsNullOrWhiteSpace(commandOrPath)) return false;

@@ -404,6 +404,95 @@ public sealed class PersistenceTests : IDisposable
         Assert.DoesNotContain(w.Current, f => f.Category == Category.Respawn);
     }
 
+    // ---- any close counts, and it can be asked for on demand ---------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("Analytics", "killed", true)]
+    [InlineData("Analytics", "closed gracefully", true)]
+    [InlineData("Weird", "killed", true)]                    // a suspicious program the user closed
+    [InlineData("Hung", "killed", true)]
+    [InlineData("Hog", "killed", true)]                      // a hog set to be closed
+    [InlineData("Hog", "slowed down (priority lowered)", false)]
+    [InlineData("Blocker", "hidden", false)]
+    [InlineData("Respawn", "killed", false)]
+    [InlineData("Analytics", "already gone", false)]
+    [InlineData("Analytics", "refused: svchost is protected", false)]
+    [InlineData("Analytics", "access denied (run Argus as administrator to close it)", false)]
+    public void Only_a_real_close_counts_towards_keeps_coming_back(string category, string result, bool counts)
+    {
+        var f = new Finding { Category = Enum.Parse<Category>(category) };
+        Assert.Equal(counts, Watcher.WasClosed(f, result));
+    }
+
+    [Fact]
+    public void A_suspicious_program_closed_by_hand_three_times_is_offered_for_disabling_what_restarts_it()
+    {
+        File.WriteAllText(Path.Combine(_dir.Path, "settings.json"),
+            "{ \"Analytics\":\"Off\",\"Hung\":\"Off\",\"Hog\":\"Off\",\"Weird\":\"Off\",\"Blocker\":\"Off\",\"Learning\":false }");
+        File.WriteAllText(Path.Combine(_dir.Path, "blocklist.txt"), "# none");
+        File.WriteAllText(Path.Combine(_dir.Path, "exclusions.txt"), "# none");
+        Config.Init(_dir.Path);
+
+        string exe = Path.Combine(_dir.Path, "argus_respawn_probe.exe");
+        string runName = "ArgusTest-" + Guid.NewGuid().ToString("N");
+        _runNames.Add(runName);
+        File.Copy(Path.Combine(Environment.SystemDirectory, "PING.EXE"), exe);
+        using (var k = Registry.CurrentUser.CreateSubKey(RunKey)) k.SetValue(runName, "\"" + exe + "\" -t 127.0.0.1");
+
+        using var w = new Watcher();
+        for (int round = 1; round <= 3; round++)
+        {
+            Assert.DoesNotContain(w.Current, f => f.Category == Category.Respawn);
+            var p = Fake.Start(_dir.Path, "argus_respawn_probe.exe");
+            try
+            {
+                var weird = new Finding { Key = "weird:" + p.Id, Category = Category.Weird, Pid = p.Id, ProcName = "argus_respawn_probe", Path = exe, ProcStart = p.StartTime };
+                w.Apply(weird);                                                                     // the "Close / fix selected" button
+                Assert.True(WaitFor(() => p.HasExited), $"round {round}: the program was not closed");
+                Assert.True(WaitFor(() => !w.IsBusy, 20));
+            }
+            finally { Fake.Kill(p); }
+            Thread.Sleep(300);                                                                      // Apply records the close just after the program exits
+        }
+
+        Assert.True(WaitFor(() => { if (!w.IsBusy) w.ScanNow(); return w.Current.Any(f => f.Category == Category.Respawn); }, 20), "nothing was offered");
+        var finding = w.Current.Single(f => f.Category == Category.Respawn);
+        Assert.Equal(runName, Assert.Single(finding.Sources!).Name);
+    }
+
+    [Fact]
+    public void Asking_what_restarts_a_program_lists_its_starters_without_waiting_or_changing_anything()
+    {
+        string exe = MakeProgramWithRunEntry(out string name);
+
+        var f = Persistence.FindingFor("argus_persist_probe", exe);
+
+        Assert.NotNull(f);
+        Assert.Equal(Category.Respawn, f!.Category);
+        Assert.Equal("respawn:argus_persist_probe", f.Key);
+        Assert.Equal(name, Assert.Single(f.Sources!).Name);
+        Assert.Contains("startup entry", f.Reason);
+        Assert.Empty(Persistence.Records());                                                         // asking changed nothing
+        Assert.Single(Persistence.Find(exe));                                                        // still enabled
+    }
+
+    [Theory]
+    [InlineData("svchost")]
+    [InlineData("explorer")]
+    public void Asking_about_a_core_windows_program_finds_nothing(string name)
+    {
+        string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), name == "explorer" ? "" : "System32", name + ".exe");
+        Assert.Null(Persistence.FindingFor(name, path));
+    }
+
+    [Fact]
+    public void Asking_about_a_program_nothing_starts_finds_nothing()
+    {
+        string exe = Path.Combine(_dir.Path, "argus_nothing_starts_me.exe");
+        File.Copy(Path.Combine(Environment.SystemDirectory, "PING.EXE"), exe);
+        Assert.Null(Persistence.FindingFor("argus_nothing_starts_me", exe));
+        Assert.Null(Persistence.FindingFor("nopath", null));
+    }
     // ---- the rails ---------------------------------------------------------------------------------------------------------------
 
     [Fact]

@@ -37,7 +37,7 @@ internal sealed class PersistenceDialog : Form
         };
         var sub = new Label
         {
-            Text = "Argus keeps closing it, but something starts it again. Closing it over and over does not help; switching off what starts it does. " +
+            Text = "Something starts this program again after it is closed. Closing it over and over does not help for long; switching off what starts it does. " +
                    "Tick what to switch off. Nothing is deleted, and you can switch each one back on from Rules > Disabled by Argus.",
             Font = Theme.Ui(10f), ForeColor = Theme.Muted, BackColor = Theme.Card, AutoSize = false, Bounds = new Rectangle(30, 62, 722, 62),
         };
@@ -96,7 +96,7 @@ internal sealed class PersistenceDialog : Form
         _list.Invalidate();
         _summary.Text = ok == 0 && refused == 0 ? "Nothing was ticked."
             : $"{ok} switched off." + (refused > 0 ? $" {refused} could not be changed (hover over the result for the reason)." : "") +
-              (ok > 0 ? " The running copy is closed as usual; it will not come back." : "");
+              (ok > 0 ? " It will not be started this way again. A copy that is running now is not closed by this: close it from the list." : "");
         _summary.ForeColor = refused > 0 ? Theme.Warn : Theme.Accent;
         if (refused > 0 && !Elevation.IsElevated) _admin.Visible = true;
     }

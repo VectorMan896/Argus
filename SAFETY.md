@@ -30,6 +30,7 @@ Update checks are off until you turn them on. An install only happens when you p
 |---|---|
 | Stop a startup program | tick it again (it uses Task Manager's own switch; nothing is deleted) |
 | Slow down a hog | priority resets when the program restarts; or add it to exclusions |
+| Lower a program's disk priority (Performance > Disk) | resets when the program restarts; nothing is closed |
 | Free up memory | nothing to undo; Windows pages memory back in as needed |
 | Invisible window made click-through | restarts with its program; or exclude its class |
 | Hide a stuck popup | Explorer shows it again the next time it opens one |

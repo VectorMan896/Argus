@@ -37,6 +37,31 @@ internal static class PerfCli
             return;
         }
 
+        if (o.SlowDiskPid != null)
+        {
+            P($"pid {o.SlowDiskPid}: {Perf.ThrottleDisk(o.SlowDiskPid.Value, null)}");
+            return;
+        }
+
+        if (o.Disk)
+        {
+            using var meter = new DiskMeter();
+            P($"Disk (read-only), once a second for {o.SampleSec} s.  Counters available: {meter.Available}.  System drive: {DiskType.Describe(DiskType.OfSystemDrive())}");
+            var before = ProcessDisk.Snapshot(); var at = DateTime.UtcNow;
+            for (int i = 0; i < o.SampleSec; i++)
+            {
+                Thread.Sleep(1000);
+                var r = meter.Read();
+                P(r == null ? "  (no reading)" : $"  busy {r.Value.Busy,5:0.0} %   read {Perf.Bytes((long)r.Value.ReadBps),9}/s   write {Perf.Bytes((long)r.Value.WriteBps),9}/s   queue {r.Value.Queue:0.0}");
+            }
+            var users = ProcessDisk.Top(before, ProcessDisk.Snapshot(), (DateTime.UtcNow - at).TotalSeconds, Native.GetProcessPath, 8);
+            P("Programs using the disk over that time (file reads and writes, including ones served from cache):");
+            if (users.Count == 0) P("  none above 8 KB/s");
+            foreach (var u in users)
+                P($"  {u.Name,-28} read {Perf.Bytes((long)u.ReadBps),9}/s  write {Perf.Bytes((long)u.WriteBps),9}/s  {u.Members.Count} process(es){(u.Protected ? "  [protected: Argus will not touch it]" : "")}{(u.Hint != null ? "  - " + u.Hint : "")}");
+            return;
+        }
+
         if (o.Usage)
         {
             var cpu = new CpuMeter(); using var gpu = new GpuMeter();

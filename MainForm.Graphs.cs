@@ -41,6 +41,13 @@ internal sealed partial class MainForm
     }
 
     /// <summary>Only sample while the Overview is actually on screen: hidden or minimised costs nothing.</summary>
-    private void UpdateSampling() =>
-        _sampler.Enabled = Visible && WindowState != FormWindowState.Minimized && _current == 0;
+    private void UpdateSampling()
+    {
+        bool on = Visible && WindowState != FormWindowState.Minimized;
+        _sampler.Enabled = on && _current == 0;
+        bool disk = on && _current == 2;                                  // the Performance page; nothing is read for the disk anywhere else
+        _diskSampler.WantUsers = disk;
+        _diskSampler.Enabled = disk;
+        if (!disk) { _diskRecent.Clear(); _diskTipShown = false; }
+    }
 }

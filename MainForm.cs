@@ -132,6 +132,7 @@ internal sealed partial class MainForm : Form
         _tray.Visible = false;
         _watcher.Dispose();
         _sampler.Dispose();
+        _diskSampler.Dispose();
         if (!_exitingForUpdate) UpdateRecovery.Confirm();     // a clean exit counts as "the new version worked"
         Application.Exit();
     }

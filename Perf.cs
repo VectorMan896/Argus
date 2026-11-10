@@ -68,6 +68,12 @@ internal static class Perf
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool SetProcessInformation(IntPtr h, int cls, ref POWER_THROTTLING s, int size);
 
+    // I/O priority has no documented Win32 call for another process; ntdll's ProcessIoPriority (33) is what Process Explorer and Process Hacker have long used.
+    [DllImport("ntdll.dll")] private static extern int NtSetInformationProcess(IntPtr h, int cls, ref int info, int size);
+    [DllImport("ntdll.dll")] private static extern int NtQueryInformationProcess(IntPtr h, int cls, out int info, int size, out int returned);
+    private const int ProcessIoPriority = 33;
+    public const int IoPriorityVeryLow = 0, IoPriorityLow = 1, IoPriorityNormal = 2;
+
     private const uint PROCESS_SET_INFORMATION = 0x200, PROCESS_SET_QUOTA = 0x100, PROCESS_QUERY_INFORMATION = 0x400;
 
     // ---- overview ---------------------------------------------------------------------------------
@@ -104,7 +110,10 @@ internal static class Perf
     public static double AvailablePercent(SystemSummary s) => s.TotalRam == 0 ? 100 : s.AvailRam * 100.0 / s.TotalRam;
 
     /// <summary>Plain-language suggestions based on this PC's actual numbers.</summary>
-    public static List<string> Tips(SystemSummary s, int enabledStartup)
+    /// <summary>The disk counts as "busy for a while" at this average over the last ten seconds.</summary>
+    public const double DiskBusyTipPercent = 85;
+
+    public static List<string> Tips(SystemSummary s, int enabledStartup, DiskTip? disk = null)
     {
         var t = new List<string>();
         double gb = s.TotalRam / 1073741824.0;
@@ -112,6 +121,14 @@ internal static class Perf
             t.Add($"This PC has {gb:0.#} GB of RAM. On older machines RAM is usually the limit: keep browser tabs and background apps down and the startup list short.");
         if (s.MemLoad >= 80)
             t.Add($"Memory is {s.MemLoad}% full right now. Try \"Free up memory\", or close programs you aren't using.");
+        if (disk is { } d)
+        {
+            const string who = "The Disk card shows which program is using it.";
+            t.Add(d.Kind == DiskKind.Hdd
+                ? $"The disk has been busy about {d.Busy:0}% of the time. A spinning hard disk can only do one thing at a time, so everything else waits. {who} " +
+                  "Windows Search indexing, updates and scans are common causes: let them finish before starting other heavy work."
+                : $"The disk has been busy about {d.Busy:0}% of the time. {who}");
+        }
         double freePct = s.DiskTotal > 0 ? s.DiskFree * 100.0 / s.DiskTotal : 100;
         if (freePct < 15)
             t.Add($"Drive {s.DiskName} has only {freePct:0}% free ({Bytes(s.DiskFree)}). Windows slows down when the system drive is nearly full: clear temp files and uninstall what you don't use.");
@@ -349,6 +366,67 @@ internal static class Perf
             catch (Win32Exception ex) when (ex.NativeErrorCode == 5) { return "access denied (run Argus as administrator to change it)"; }
             catch (InvalidOperationException) { return "already exited"; }
             catch (Exception ex) { return "failed: " + ex.Message; }
+        }
+    }
+
+    /// <summary>The program's current disk priority (0 very low, 1 low, 2 normal ...), or null if it cannot be read.</summary>
+    public static int? GetIoPriority(int pid)
+    {
+        IntPtr h = Native.OpenProcess(Native.PROCESS_QUERY_LIMITED_INFORMATION, false, (uint)pid);
+        if (h == IntPtr.Zero) h = Native.OpenProcess(PROCESS_QUERY_INFORMATION, false, (uint)pid);
+        if (h == IntPtr.Zero) return null;
+        try { return NtQueryInformationProcess(h, ProcessIoPriority, out int v, sizeof(int), out _) == 0 ? v : null; }
+        catch (EntryPointNotFoundException) { return null; }
+        finally { Native.CloseHandle(h); }
+    }
+
+    /// <summary>Sets the program's disk priority. "ok", or why it was not changed. Only ever lowers it in practice: Argus asks for Low.</summary>
+    public static string SetIoPriority(int pid, int level)
+    {
+        IntPtr h = Native.OpenProcess(PROCESS_SET_INFORMATION, false, (uint)pid);
+        if (h == IntPtr.Zero)
+            return Marshal.GetLastWin32Error() == 5 ? "access denied (run Argus as administrator to change it)" : "already exited";
+        try
+        {
+            int status = NtSetInformationProcess(h, ProcessIoPriority, ref level, sizeof(int));
+            return status == 0 ? "ok" : status == unchecked((int)0xC0000022) ? "access denied (run Argus as administrator to change it)" : $"failed (status 0x{status:X8})";
+        }
+        catch (EntryPointNotFoundException) { return "failed: this Windows does not allow it"; }
+        finally { Native.CloseHandle(h); }
+    }
+
+    /// <summary>
+    /// The gentle fix for a program that keeps the disk busy: lower its disk priority (and, like the hog slow-down, its CPU priority) so everything
+    /// else gets the disk first. Nothing is closed; it resets when the program restarts. The same safety rails as every other action apply.
+    /// </summary>
+    public static string ThrottleDisk(int pid, DateTime? expectedStart)
+    {
+        Process p;
+        try { p = Process.GetProcessById(pid); } catch { return "already gone"; }
+        using (p)
+        {
+            string name = p.ProcessName;
+            string? path = Native.GetProcessPath(pid);
+            if (Safety.IsNeverAuto(name, pid, path)) return $"refused: {name} is a core/shell process";
+            try
+            {
+                if (expectedStart != null && p.StartTime != expectedStart.Value)
+                    return "skipped: process id was reused by a different program";
+            }
+            catch { /* StartTime not readable */ }
+
+            string io;
+            int? cur = GetIoPriority(pid);
+            if (cur != null && cur <= IoPriorityLow) io = "disk priority was already " + (cur == IoPriorityVeryLow ? "Very Low" : "Low");
+            else
+            {
+                string r = SetIoPriority(pid, IoPriorityLow);
+                if (r != "ok") return r;
+                io = "disk priority lowered to Low";
+            }
+            string cpu = Throttle(pid, expectedStart);                               // same checks again, then CPU priority + efficiency mode
+            const string prefix = "slowed down: ";
+            return prefix + io + (cpu.StartsWith(prefix) ? ", " + cpu[prefix.Length..] : "");
         }
     }
 

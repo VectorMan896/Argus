@@ -72,7 +72,7 @@ internal sealed class Watcher : IDisposable
                     if (ok)
                     {
                         Stats.Record(f, result);
-                        if (f.Category == Category.Analytics) NoteKill(f.ProcName, f.Path);
+                        if (WasClosed(f, result)) NoteKill(f.ProcName, f.Path);
                         if (f.Category == Category.Hog) _acted.Add(f.Key);
                         continue;
                     }
@@ -113,34 +113,38 @@ internal sealed class Watcher : IDisposable
         Log.Write($"[Memory] only {Perf.AvailablePercent(before):0}% of RAM was free: asked Windows to page out {n} idle background programs (nothing closed).");
     }
 
+    /// <summary>True when the result means a program was really closed: not slowed down, not hidden, not refused, not already gone.</summary>
+    internal static bool WasClosed(Finding f, string result) =>
+        f.Category is Category.Analytics or Category.Weird or Category.Hung or Category.Hog
+        && (result.StartsWith("killed") || result.StartsWith("closed"));
+
+    /// <summary>Called for every close, by Argus or by the user. The third close of the same program within ten minutes looks for what restarts it.</summary>
     internal void NoteKill(string name, string? path = null)
     {
-        var now = DateTime.UtcNow;
-        if (!_kills.TryGetValue(name, out var list)) _kills[name] = list = new List<DateTime>();
-        list.Add(now);
-        list.RemoveAll(d => (now - d).TotalMinutes > 10);
-        if (list.Count >= 3 && (!_respawnWarned.TryGetValue(name, out var w) || (now - w).TotalHours >= 1))
+        int times;
+        lock (_kills)                                                     // the scan thread and the button handler both call this
         {
+            var now = DateTime.UtcNow;
+            if (!_kills.TryGetValue(name, out var list)) _kills[name] = list = new List<DateTime>();
+            list.Add(now);
+            list.RemoveAll(d => (now - d).TotalMinutes > 10);
+            times = list.Count;
+            if (times < 3 || (_respawnWarned.TryGetValue(name, out var w) && (now - w).TotalHours < 1)) return;
             _respawnWarned[name] = now;
-            Log.Write($"NOTE: {name} has been closed {list.Count} times in 10 minutes - something keeps restarting it " +
-                      "(a service or scheduled task). Disabling that service/task is a cleaner fix than closing it each time.");
-            RaiseRespawn(name, path, list.Count);
         }
+        Log.Write($"NOTE: {name} has been closed {times} times in 10 minutes - something keeps restarting it " +
+                  "(a service or scheduled task). Disabling that service/task is a cleaner fix than closing it each time.");
+        RaiseRespawn(name, path, times);
     }
 
     /// <summary>Looks for what keeps restarting the program. If something is found it is offered to the user; nothing is changed here.</summary>
     private void RaiseRespawn(string name, string? path, int times)
     {
         lock (_respawn) if (_respawnDismissed.Contains(name)) return;
-        List<PersistenceSource> sources;
-        try { sources = Persistence.Find(path); }
+        Finding? f;
+        try { f = Persistence.FindingFor(name, path, $"Closed {times} times in 10 minutes. "); }
         catch (Exception ex) { Log.Write("could not look for what restarts " + name + ": " + ex.Message); return; }
-        if (sources.Count == 0) return;
-        var f = new Finding
-        {
-            Key = "respawn:" + name, Category = Category.Respawn, ProcName = name, Path = path, Sources = sources,
-            Reason = $"Closed {times} times in 10 minutes. Restarted by: " + string.Join("; ", sources.Select(s => $"{s.KindLabel} \"{s.Display}\"")),
-        };
+        if (f == null) return;
         lock (_respawn) _respawn[name] = f;
     }
 
@@ -162,6 +166,7 @@ internal sealed class Watcher : IDisposable
         string result = Actions.Execute(f, Config.Settings, force);
         Log.Write($"[{f.CategoryLabel}] {f.ProcName} (pid {f.Pid}): {(force ? "force " : "")}closed by you -> {result}");
         Stats.Record(f, result);
+        if (WasClosed(f, result)) NoteKill(f.ProcName, f.Path);                 // closing it by hand counts too
         ScanNow();
     });
 

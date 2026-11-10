@@ -12,8 +12,8 @@ internal sealed class CliOptions
     public int SampleSec = 3, X, Y, Tab;
     public int? HungSec, HogSec;
     public double? HogCpu;
-    public int? TrimPid, TempDays, ThrottlePid;
-    public bool TrimAll, TempClean, StartupOn, Usage, UpdateYes, NoRestart;
+    public int? TrimPid, TempDays, ThrottlePid, SlowDiskPid;
+    public bool TrimAll, TempClean, StartupOn, Usage, Disk, UpdateYes, NoRestart;
     public string? SignatureFile, StartersFile;
     public int? UpdatedFrom;
     public string? StartupName, TempDir;
@@ -45,6 +45,8 @@ internal static class Cli
                 case "--version": o.Mode = CliMode.Version; break;
                 case "--perf": o.Mode = CliMode.Perf; break;
                 case "--usage": o.Mode = CliMode.Perf; o.Usage = true; break;
+                case "--disk": o.Mode = CliMode.Perf; o.Disk = true; break;
+                case "--slow-disk-pid": o.Mode = CliMode.Perf; if (int.TryParse(Next(), out int sdp)) o.SlowDiskPid = sdp; break;
                 case "--signature": o.Mode = CliMode.Perf; o.SignatureFile = Next(); break;
                 case "--starters": o.Mode = CliMode.Perf; o.StartersFile = Next(); break;
                 case "--update": case "--check-update": o.Mode = CliMode.Update; break;

@@ -54,7 +54,8 @@ internal sealed partial class MainForm
 
         grid.Controls.Add(tips, 0, 0);
         grid.Controls.Add(tools, 0, 1);
-        grid.Controls.Add(st, 1, 0); grid.SetRowSpan(st, 2);
+        grid.Controls.Add(BuildDiskCard(), 1, 0);
+        grid.Controls.Add(st, 1, 1);
         return grid;
     }
 
@@ -79,7 +80,8 @@ internal sealed partial class MainForm
             $"Memory {Perf.Bytes((long)(s.TotalRam - s.AvailRam))} of {Perf.Bytes((long)s.TotalRam)} ({s.MemLoad}%)    " +
             $"Drive {s.DiskName} {Perf.Bytes(s.DiskFree)} free\r\n" +
             $"Up {(int)s.Uptime.TotalDays}d {s.Uptime.Hours}h    {s.ProcessCount} processes    {enabled} of {items.Count} startup programs on";
-        _perfTips.Text = "-  " + string.Join("\r\n\r\n-  ", Perf.Tips(s, enabled));
+        _lastSummary = s; _lastEnabledStartup = enabled;
+        RenderTips();
 
         _loadingStartup = true;
         _startupList.BeginUpdate();

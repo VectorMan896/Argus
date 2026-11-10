@@ -217,6 +217,7 @@ internal sealed partial class MainForm
         var fix = new PillButton("Close / fix selected", "\uE73E", PillStyle.Primary) { Margin = new Padding(0, 0, 10, 0) };
         var kill = new PillButton("Kill now", "\uE711", PillStyle.Danger) { Margin = new Padding(0, 0, 10, 0) };
         var excl = new PillButton("Never touch this again", "", PillStyle.Secondary) { Margin = new Padding(0, 0, 10, 0) };
+        var starters = new PillButton("What restarts it?", "", PillStyle.Secondary) { Margin = new Padding(0, 0, 10, 0) };
         var det = new PillButton("Details", "", PillStyle.Ghost);
         fix.Click += (_, _) =>
         {
@@ -244,8 +245,9 @@ internal sealed partial class MainForm
             LoadLists();
             _watcher.ScanNow();
         };
+        starters.Click += (_, _) => ShowStarters();
         det.Click += (_, _) => ShowDetails();
-        bar.Controls.AddRange(new Control[] { fix, kill, excl, det });
+        bar.Controls.AddRange(new Control[] { fix, kill, excl, starters, det });
 
         var cell = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Card, Margin = new Padding(0) };
         cell.Controls.Add(_findings); cell.Controls.Add(_emptyNote);

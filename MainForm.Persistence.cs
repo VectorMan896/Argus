@@ -23,6 +23,30 @@ internal sealed partial class MainForm
         }
     }
 
+    /// <summary>"What restarts it?": look for the service, task or startup entry behind the selected program without waiting for it to come back three times.</summary>
+    private void ShowStarters()
+    {
+        var f = Selected().FirstOrDefault(x => x.Category != Category.Blocker);
+        if (f == null)
+        {
+            MessageBox.Show(this, "Select a program in the list first.", "Argus", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        Finding? r;
+        var old = Cursor; Cursor = Cursors.WaitCursor;                     // reading Task Scheduler can take a second
+        try { r = f.Category == Category.Respawn ? f : Persistence.FindingFor(f.ProcName, f.Path); }
+        finally { Cursor = old; }
+        if (r == null)
+        {
+            MessageBox.Show(this,
+                $"No service, scheduled task or startup entry points at {f.ProcName}.\n\nIf it comes back, something else starts it (an installer, an updater, " +
+                "or another program), or it is a core Windows program, which Argus never offers to switch off.",
+                "Argus", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        ShowPersistenceDialog(r);
+    }
+
     private void ShowDisabledByArgus()
     {
         using var d = new DisabledByArgusDialog();

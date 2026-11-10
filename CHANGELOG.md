@@ -7,6 +7,32 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+### Added
+- **Disk card** on the Performance page, the first part of disk monitoring. Older PCs with a spinning hard disk often sit at "100% disk" and crawl; Argus now shows it.
+  - A live graph of how busy the disk is (the same "Active time" Task Manager shows) with read and write speed, and whether the system drive is a
+    **spinning hard disk or an SSD** (the drive itself is asked; if it does not say, the card says "type not reported" instead of guessing).
+  - **Using the disk right now:** the programs reading and writing the most, with all of a program's processes added together. Core Windows programs are shown but
+    marked *Protected*, and the usual heavy users get a plain note (Windows Search indexing, Windows Security scans, Windows Update, OneDrive). The numbers are the
+    file reads and writes a program asked for, including ones answered from Windows' cache, so they show who is busy with files rather than exact disk accesses.
+  - **Slow down selected** lowers that program's disk priority (and its CPU priority) so everything else gets the disk first. Nothing is closed, and it resets when
+    the program restarts. Core Windows programs, this program and Argus itself are refused, like every other action.
+  - When the disk has been busy about 85% or more for ten seconds, a tip appears under *What would help most* (a hard disk gets the "it can only do one thing at a time"
+    explanation).
+  - Nothing is read for the disk unless the Performance page is on screen, so it costs an older PC nothing the rest of the time.
+- `Argus.exe --disk [--sample N]` prints the same readings and the busiest programs without changing anything; `--slow-disk-pid PID` slows one down.
+- 30 more tests (248 in total): busy-time maths, reading the drive-type answer, who-is-using-it from made-up numbers (grouping, restarted programs, counters that went
+  backwards, core Windows marked), a real write showing up in this program's counters, the disk priority change and its refusals on throwaway programs, the tip, the
+  sampler staying silent when off, and the card drawing. Each rule was checked to fail when deliberately broken.
+- **What restarts it?** button on *Needs a decision*: select any program and Argus lists the service, scheduled task or startup entry behind it straight away,
+  without waiting for it to come back three times, and opens the same switch-off window.
+
+### Fixed
+- "Keeps coming back" now counts every real close, by Argus or by you, and for suspicious, not-responding and close-set resource-hog programs as well as analytics.
+  Before, closing a suspicious program by hand never triggered it, so a service that restarts itself (for example a fingerprint-reader plugin) was closed again and
+  again with no offer to switch it off.
+- The switch-off window no longer says the running copy is closed for you; it is not, you close it from the list.
+- 16 more tests (218 in total), including closing by hand three times, and a check that each new rule fails when deliberately broken.
+
 ## [0.5.0] - 2026-11-07
 
 ### Added

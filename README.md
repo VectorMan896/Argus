@@ -46,7 +46,7 @@ Settings and the log are in `%APPDATA%\Argus`; delete that too to remove every t
 | Background resource hogs | no visible window and busy CPU/memory for 60 s | slow it down (lower priority + efficiency mode), never close |
 | Suspicious programs | disguised system names, temp-folder programs, random names, no publisher. A valid digital signature clears a program; a broken one raises the alarm | ask you |
 | Invisible blockers | fully transparent windows or stuck popup windows that catch clicks | make click-through / hide |
-| Keeps coming back | an analytics program that Argus has closed 3 times in 10 minutes and that a service, scheduled task or startup entry restarts | ask you (never automatic) |
+| Keeps coming back | a program closed 3 times in 10 minutes (by Argus or by you) that a service, scheduled task or startup entry restarts | ask you (never automatic) |
 
 Each category can be set to **Off**, **Ask** or **Auto** on the Rules page (the last one is always Ask).
 
@@ -58,7 +58,8 @@ on the Needs a decision page. Upgrading from an older version does not turn lear
 
 ### Programs that keep coming back
 Some analytics programs are restarted by a Windows service, a scheduled task or a startup entry, so closing them again and again does nothing.
-After the third close in ten minutes Argus looks for what restarts the program and lists it on the Needs a decision page. **Close / fix selected**
+After the third close in ten minutes (automatic or by hand) Argus looks for what restarts the program and lists it on the Needs a decision page. You do
+not have to wait: select any program there and press **What restarts it?** to look right away. **Close / fix selected** on a "Keeps coming back" entry
 opens a window with each starter ticked; **Switch off ticked** then:
 
 - sets a service to *Disabled*, switches a scheduled task off, or un-ticks a startup entry (the same switch Task Manager uses);
@@ -80,7 +81,7 @@ A slim icon sidebar (white circle = current page) and rounded dark cards:
 |---|---|
 | Overview | status, counters since Argus started, live CPU and GPU graphs, memory dial, system meters, latest activity |
 | Needs a decision | everything Argus flagged but did not handle on its own, with Close / Kill / Never touch / Details |
-| Performance | tips from your real numbers, startup programs, free up memory, old temp files |
+| Performance | tips from your real numbers, live disk activity and who is using the disk, startup programs, free up memory, old temp files |
 | Rules | Off / Ask / Auto per category, thresholds, options (administrator mode, learning mode, what Argus disabled), updates |
 | Lists | the blocklist and the exclusions, editable |
 | Activity | everything Argus did, and why (also on the Overview as a short peek with a button) |
@@ -92,6 +93,9 @@ invisible click-catcher). Click to select; right-click or Esc cancels. You get t
 
 ### Older-PC performance
 - Plain-language tips based on your real RAM, free disk space, uptime and startup list.
+- **Disk activity:** a live graph of how busy the disk is, whether it is a spinning hard disk or an SSD, and which programs are using it right now. *Slow down selected*
+  lowers that program's disk priority (nothing is closed; it resets when the program restarts). Core Windows programs are listed but never touched. A tip appears when the
+  disk has been busy for a while. Only read while the Performance page is open.
 - **Startup programs:** untick to stop one starting with Windows (same mechanism as Task Manager; nothing is deleted).
 - **Free up memory:** asks Windows to page out idle background programs. Nothing is closed.
 - **Temp cleanup:** manual only, your own temp folder only, old files only (default 7 days), asks first.
@@ -128,6 +132,7 @@ Argus.exe --stack X Y                                  # windows that would rece
 Argus.exe --pick                                       # click-to-close tool without the main window
 Argus.exe --perf                                       # read-only performance overview
 Argus.exe --usage [--sample N]                         # print CPU and GPU load once a second
+Argus.exe --disk [--sample N]                          # disk busy time, speed, drive type and the busiest programs (read-only)
 Argus.exe --signature FILE                             # is this file digitally signed, and by whom (read-only)
 Argus.exe --starters FILE                              # what service / task / startup entry starts this program (read-only)
 Argus.exe --update [--yes] [--no-restart]              # look for a newer release; --yes installs it (portable exe only)
@@ -163,7 +168,7 @@ powershell -ExecutionPolicy Bypass -File scripts/publish.ps1
 This writes `dist/Argus-<version>-win-x64.zip` and its `.sha256` checksum. The first publish downloads the .NET runtime packs from NuGet.
 The first launch of the portable exe is a few seconds slower because it unpacks its native files to `%TEMP%`.
 
-Run the automated tests (202 so far; they only use throwaway programs, folders and registry entries):
+Run the automated tests (248 so far; they only use throwaway programs, folders and registry entries):
 
 ```bash
 dotnet test tests/Argus.Tests/Argus.Tests.csproj
