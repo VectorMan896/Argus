@@ -7,6 +7,8 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-10
+
 ### Added
 - **Disk card** on the Performance page, the first part of disk monitoring. Older PCs with a spinning hard disk often sit at "100% disk" and crawl; Argus now shows it.
   - A live graph of how busy the disk is (the same "Active time" Task Manager shows) with read and write speed, and whether the system drive is a
@@ -20,7 +22,7 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
     explanation).
   - Nothing is read for the disk unless the Performance page is on screen, so it costs an older PC nothing the rest of the time.
 - `Argus.exe --disk [--sample N]` prints the same readings and the busiest programs without changing anything; `--slow-disk-pid PID` slows one down.
-- 30 more tests (248 in total): busy-time maths, reading the drive-type answer, who-is-using-it from made-up numbers (grouping, restarted programs, counters that went
+- 46 more tests (248 in total). For the disk card: busy-time maths, reading the drive-type answer, who-is-using-it from made-up numbers (grouping, restarted programs, counters that went
   backwards, core Windows marked), a real write showing up in this program's counters, the disk priority change and its refusals on throwaway programs, the tip, the
   sampler staying silent when off, and the card drawing. Each rule was checked to fail when deliberately broken.
 - **What restarts it?** button on *Needs a decision*: select any program and Argus lists the service, scheduled task or startup entry behind it straight away,
@@ -31,7 +33,7 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
   Before, closing a suspicious program by hand never triggered it, so a service that restarts itself (for example a fingerprint-reader plugin) was closed again and
   again with no offer to switch it off.
 - The switch-off window no longer says the running copy is closed for you; it is not, you close it from the list.
-- 16 more tests (218 in total), including closing by hand three times, and a check that each new rule fails when deliberately broken.
+- The tests for this include closing a suspicious program by hand three times, and a check that they fail when the fix is taken out.
 
 ## [0.5.0] - 2026-11-07
 
@@ -154,7 +156,8 @@ First version.
 - Command line: `--version`, `--scan`, `--apply`, `--stack`, `--pick`, `--perf`, `--hidden`, `--config`, `--tab`.
 - Log file and a note when a closed program keeps being restarted by a service or scheduled task.
 
-[Unreleased]: https://github.com/VectorMan896/Argus/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/VectorMan896/Argus/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/VectorMan896/Argus/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/VectorMan896/Argus/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/VectorMan896/Argus/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/VectorMan896/Argus/compare/v0.2.0...v0.3.0

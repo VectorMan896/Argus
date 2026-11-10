@@ -11,7 +11,7 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <AssemblyName>Argus</AssemblyName>
     <RootNamespace>Argus</RootNamespace>
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <Authors>VectorMan896</Authors>
     <Copyright>Copyright (c) 2026 VectorMan896</Copyright>
     <!-- Argus builds its UI in code (no Visual Studio designer), so designer-serialization analyzer rules do not apply -->

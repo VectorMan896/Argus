@@ -8,7 +8,7 @@ Argus is a small Windows tray app that keeps an eye on your PC. It closes analyt
 programs and background resource hogs, neutralises invisible windows that swallow your clicks, and helps older PCs run
 better. It has exclusion lists, and a "click a window to close it" tool.
 
-**Version:** 0.5.0 (early; see [CHANGELOG.md](CHANGELOG.md)). **Platform:** Windows 10/11, x64. **Network:** none, unless you turn on update checks (then only GitHub).
+**Version:** 0.6.0 (early; see [CHANGELOG.md](CHANGELOG.md)). **Platform:** Windows 10/11, x64. **Network:** none, unless you turn on update checks (then only GitHub).
 
 ## Get Argus (there is no installer)
 

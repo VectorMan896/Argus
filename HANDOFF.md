@@ -11,8 +11,8 @@ State of the 0.5.0 work (the five ideas from the TODO "Ideas" list). The five id
 - [ ] The v0.4.0 release page notes are empty: the user can paste the output of `scripts\release-notes.ps1 -Version 0.4.0 | clip`.
 - [ ] The real Windows administrator prompt (UAC) can only be checked by hand.
 
-- [ ] Disk monitoring is built and uncommitted (Disk.cs, DiskUi.cs, MainForm.Disk.cs, Perf.ThrottleDisk, 30 tests, docs). Decide the next release number
-  (a new feature suggests 0.6.0; the "keeps coming back" fix alone would be 0.5.1) and bump `Argus.csproj` and the changelog together.
+- [ ] Version 0.6.0 is committed and tagged locally; pushing `main` and `v0.6.0` is the user's step and is what triggers the release build (CI: tests, portable zip,
+  checksum, release notes from the 0.6.0 changelog section).
 - [ ] Disk monitoring second part and disk health are in TODO.md.
 
 ## Completed Tasks (This Session)
