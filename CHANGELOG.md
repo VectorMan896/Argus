@@ -22,8 +22,8 @@ The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/
     explanation).
   - Nothing is read for the disk unless the Performance page is on screen, so it costs an older PC nothing the rest of the time.
 - `Argus.exe --disk [--sample N]` prints the same readings and the busiest programs without changing anything; `--slow-disk-pid PID` slows one down.
-- 46 more tests (248 in total). For the disk card: busy-time maths, reading the drive-type answer, who-is-using-it from made-up numbers (grouping, restarted programs, counters that went
-  backwards, core Windows marked), a real write showing up in this program's counters, the disk priority change and its refusals on throwaway programs, the tip, the
+- 47 more tests (249 in total). For the disk card: busy-time maths, reading the drive-type answer, who-is-using-it from made-up numbers (grouping, restarted programs, counters that went
+  backwards, core Windows marked), a real write showing up in this program's counters, the disk priority change and its refusals on throwaway programs (including one that inherited a low disk priority, as programs do on GitHub's build machines), the tip, the
   sampler staying silent when off, and the card drawing. Each rule was checked to fail when deliberately broken.
 - **What restarts it?** button on *Needs a decision*: select any program and Argus lists the service, scheduled task or startup entry behind it straight away,
   without waiting for it to come back three times, and opens the same switch-off window.

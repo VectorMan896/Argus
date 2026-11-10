@@ -11,8 +11,10 @@ State of the 0.5.0 work (the five ideas from the TODO "Ideas" list). The five id
 - [ ] The v0.4.0 release page notes are empty: the user can paste the output of `scripts\release-notes.ps1 -Version 0.4.0 | clip`.
 - [ ] The real Windows administrator prompt (UAC) can only be checked by hand.
 
-- [ ] Version 0.6.0 is committed and tagged locally; pushing `main` and `v0.6.0` is the user's step and is what triggers the release build (CI: tests, portable zip,
-  checksum, release notes from the 0.6.0 changelog section).
+- [ ] **v0.6.0 has no release yet.** The first push failed CI: three disk tests assumed a new program starts at Normal disk priority, but on GitHub's machines programs
+  start at Low (children inherit it). Fixed in the tests (they now set the starting priority) and reproduced locally by running the suite from a Low-priority shell.
+  Once the fix is committed: re-point the tag (`git tag -d v0.6.0`, `git tag -a v0.6.0 -m "Argus 0.6.0"` on the fix commit), then the user pushes `main` and
+  force-pushes the tag (`git push --force origin v0.6.0`); nothing was ever released from the old tag. CI now prints failed tests as annotations (`scripts/ci-test.ps1`).
 - [ ] Disk monitoring second part and disk health are in TODO.md.
 
 ## Completed Tasks (This Session)
@@ -27,6 +29,8 @@ State of the 0.5.0 work (the five ideas from the TODO "Ideas" list). The five id
 - [x] Disk monitoring, first part (Disk card, drive type, who is using the disk, disk-priority slow-down, tip, `--disk`). 248 tests passed. Looked at in the real
   window with a screenshot. Lesson: a test must never aim a real change at a real core Windows program (a mutation check once lowered explorer.exe's disk priority;
   it was put back to Normal and that test was removed).
+- [x] CI failure diagnosed from the run page annotations (logs need a GitHub login): inherited disk priority. Lesson: a test must not assume the starting state a parent
+  process passes down (priority, environment); set it explicitly or read it first. Run the suite from a Low-disk-priority shell to check.
 - [x] Real case from the user: `CommonHKFPModuleSvr` (an unsigned fingerprint-reader plugin service in `C:\Users\Public`, restarted by its service recovery action)
   was flagged Suspicious and kept returning. Fixed so closes by hand and of Suspicious/Hung/Hog count, plus the "What restarts it?" button. 218 tests passed.
 

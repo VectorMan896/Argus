@@ -194,13 +194,23 @@ public sealed class DiskTests : IDisposable
 
     // ---- lowering the disk priority (throwaway programs only) --------------------------------------------------------------------
 
+    /// <summary>
+    /// A program starts with the disk priority of whatever started it, and GitHub's build machines start programs at Low. So a throwaway program is
+    /// put at Normal explicitly before a test relies on it being there (raising to Normal needs no special rights).
+    /// </summary>
+    private static void StartAtNormal(Process p)
+    {
+        if (Perf.GetIoPriority(p.Id) != Perf.IoPriorityNormal) Assert.Equal("ok", Perf.SetIoPriority(p.Id, Perf.IoPriorityNormal));
+        Assert.Equal(Perf.IoPriorityNormal, Perf.GetIoPriority(p.Id));
+    }
+
     [Fact]
     public void Lowering_the_disk_priority_works_and_can_be_read_back()
     {
         var p = Fake.Start(_dir.Path, "argus_disk_probe.exe");
         try
         {
-            Assert.Equal(Perf.IoPriorityNormal, Perf.GetIoPriority(p.Id));        // a fresh program starts at normal
+            StartAtNormal(p);
             Assert.Equal("ok", Perf.SetIoPriority(p.Id, Perf.IoPriorityLow));
             Assert.Equal(Perf.IoPriorityLow, Perf.GetIoPriority(p.Id));
             Assert.False(p.HasExited);
@@ -214,6 +224,7 @@ public sealed class DiskTests : IDisposable
         var p = Fake.Start(_dir.Path, "argus_disk_probe.exe");
         try
         {
+            StartAtNormal(p);
             string first = Perf.ThrottleDisk(p.Id, p.StartTime);
             Assert.StartsWith("slowed down", first);
             Assert.Contains("disk priority lowered to Low", first);
@@ -229,6 +240,26 @@ public sealed class DiskTests : IDisposable
     }
 
     [Fact]
+    public void A_program_that_already_has_low_disk_priority_is_reported_as_such_and_still_gets_its_cpu_priority_lowered()
+    {
+        var p = Fake.Start(_dir.Path, "argus_disk_probe.exe");
+        try
+        {
+            Assert.Equal("ok", Perf.SetIoPriority(p.Id, Perf.IoPriorityLow));                  // as if it had inherited Low from the program that started it
+
+            string r = Perf.ThrottleDisk(p.Id, p.StartTime);
+
+            Assert.StartsWith("slowed down", r);
+            Assert.Contains("disk priority was already Low", r);
+            Assert.DoesNotContain("lowered to Low", r);
+            Assert.Equal(Perf.IoPriorityLow, Perf.GetIoPriority(p.Id));
+            p.Refresh();
+            Assert.Equal(ProcessPriorityClass.BelowNormal, p.PriorityClass);
+        }
+        finally { Fake.Kill(p); }
+    }
+
+    [Fact]
     public void Slowing_down_refuses_this_program_a_vanished_one_and_a_reused_process_id_without_changing_anything()
     {
         Assert.StartsWith("refused", Perf.ThrottleDisk(Environment.ProcessId, null));          // Argus itself
@@ -237,6 +268,7 @@ public sealed class DiskTests : IDisposable
         int pid = p.Id;
         try
         {
+            StartAtNormal(p);
             string reused = Perf.ThrottleDisk(pid, p.StartTime.AddHours(-1));
             Assert.StartsWith("skipped", reused);
             Assert.Equal(Perf.IoPriorityNormal, Perf.GetIoPriority(pid));                       // nothing changed

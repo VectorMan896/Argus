@@ -168,7 +168,7 @@ powershell -ExecutionPolicy Bypass -File scripts/publish.ps1
 This writes `dist/Argus-<version>-win-x64.zip` and its `.sha256` checksum. The first publish downloads the .NET runtime packs from NuGet.
 The first launch of the portable exe is a few seconds slower because it unpacks its native files to `%TEMP%`.
 
-Run the automated tests (248 so far; they only use throwaway programs, folders and registry entries):
+Run the automated tests (249 so far; they only use throwaway programs, folders and registry entries):
 
 ```bash
 dotnet test tests/Argus.Tests/Argus.Tests.csproj
